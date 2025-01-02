@@ -1,15 +1,11 @@
+extern crate alloc;
 use alloc::format;
 use alloc::string::String;
 use core::ffi::c_void;
 use core::ptr::{null_mut, slice_from_raw_parts_mut};
-use core::slice;
-use embedded_graphics::geometry::Dimensions;
-use embedded_graphics::pixelcolor::Bgr888;
 use psp::sys;
 use psp::sys::{sceGuGetMemory, GuPrimitive, VertexType};
 use zero_derive::Zero;
-
-use tinybmp::Bmp;
 
 #[repr(C)]
 #[derive(Debug, Zero)]
@@ -24,62 +20,105 @@ struct Vertex {
 #[repr(C)]
 #[derive(Debug, Zero)]
 struct TextureVertex {
-    u: u16,
-    v: u16,
+    u: f32,
+    v: f32,
     color: u32,
-    x: i16,
-    y: i16,
-    z: i16,
+    x: f32,
+    y: f32,
+    z: f32,
 }
 
 #[repr(C)]
-pub struct Texture {
-    width: u32,
-    height: u32,
-    data: *const [u8],
+pub struct Texture<const N: usize> {
+    pub width: u32,
+    pub height: u32,
+    pub data: psp::Align16<[u8; N]>,
 }
 
-pub unsafe fn load_texture(filename: &[u8]) -> Texture {
-    let bmp: Bmp<Bgr888> = Bmp::from_slice(filename).unwrap();
-    let (width, height) = (bmp.bounding_box().size.width, bmp.bounding_box().size.height);
+impl<const N: usize> Texture<N> {
 
-    let buffer = bmp.as_raw().image_data();
-
-    Texture {
-        width,
-        height,
-        data: buffer,
+    /// Create a new texture from raw data
+    pub fn new_raw(width: u32, height: u32, p: [u8; N]) -> Texture<N> {
+        Texture {
+            width,
+            height,
+            data: psp::Align16(p),
+        }
     }
 }
 
-pub unsafe fn draw_rect(x: i16, y: i16, width: i16, height: i16, color: u32) {
-    let vert_len = 3;
-    let vert_ptr = sceGuGetMemory((vert_len * size_of::<TextureVertex>()) as i32) as *mut TextureVertex;
+pub unsafe fn draw_rect<const N: usize>(
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    color: u32,
+    texture: &Texture<N>,
+) {
+    let vert_len = 2;
+    let vert_ptr =
+        sceGuGetMemory((vert_len * size_of::<TextureVertex>()) as i32) as *mut TextureVertex;
     let vertices = slice_from_raw_parts_mut(vert_ptr, vert_len);
 
     (*vertices)[0].zero();
     (*vertices)[1].zero();
-    (*vertices)[2].zero();
 
+    // Define vertex 1
     (*vertices)[0].x = x;
     (*vertices)[0].y = y;
 
     (*vertices)[0].color = color;
 
+    // Define vertex 2
+    (*vertices)[1].u = width;
+    (*vertices)[1].v = height;
     (*vertices)[1].x = x + width;
     (*vertices)[1].y = y + height;
 
     (*vertices)[1].color = color;
-    // sys::sceGuDebugPrint(0, 0, 0x00FFFF00, format!("Vertices: \n{}", memory_hex(vertices as *const _ as *const u8, 2 * size_of::<Vertex>())).as_ptr());
-    // sys::sceGuDebugFlush();
-    sys::sceGuDrawArray(GuPrimitive::Sprites, VertexType::COLOR_8888 | VertexType::TEXTURE_16BIT | VertexType::VERTEX_16BIT | VertexType::TRANSFORM_2D, 3, null_mut(), vertices as *mut _ as *mut c_void);
+
+    // Make sure the texture cache is ready
+    sys::sceKernelDcacheWritebackInvalidateAll();
+
+    // Set the texture pixel format to Psm8888 and disable swizzling
+    sys::sceGuTexMode(sys::TexturePixelFormat::Psm8888, 0, 0, 0);
+
+    // Set the texture mapping function to replace all fragments
+    sys::sceGuTexFunc(sys::TextureEffect::Replace, sys::TextureColorComponent::Rgb);
+
+    // Set texture map
+    sys::sceGuTexImage(
+        sys::MipmapLevel::None,
+        texture.width as i32,
+        texture.height as i32,
+        texture.width as i32,
+        &texture.data as *const psp::Align16<_> as *const _,
+    );
+
+    // Enable the 2dtexture state
+    sys::sceGuEnable(sys::GuState::Texture2D);
+
+    // Draw primitive
+    sys::sceGuDrawArray(
+        GuPrimitive::Sprites,
+        VertexType::COLOR_8888
+            | VertexType::TEXTURE_32BITF
+            | VertexType::VERTEX_32BITF
+            | VertexType::TRANSFORM_2D,
+        2,
+        null_mut(),
+        vertices as *mut _ as *mut c_void,
+    );
+
+    // Disable 2dtexture state
+    sys::sceGuDisable(sys::GuState::Texture2D);
 }
 
 #[allow(unused)]
-pub fn memory_hex(ptr: *const u8, len: usize) -> String{
+pub fn memory_hex(ptr: *const u8, len: usize) -> String {
     let mut hex_string = String::new();
     unsafe {
-        let bytes = slice::from_raw_parts(ptr, len);
+        let bytes = core::slice::from_raw_parts(ptr, len);
         for (i, byte) in bytes.iter().enumerate() {
             hex_string.push_str(&format!("{:02X} ", byte));
             if (i + 1) % 4 == 0 {

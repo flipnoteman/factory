@@ -3,10 +3,11 @@
 
 mod gu;
 mod render;
-extern crate alloc;
 use crate::gu::Gu;
 
 psp::module!("factory", 1, 1);
+
+const IMAGE_SIZE: usize = 128;
 
 fn psp_main() {
     psp::enable_home_button();
@@ -18,14 +19,18 @@ fn psp_main() {
         g.init_gu();
         g.set_clear_color(0xff000000);
 
-        loop{
+        loop {
             // Call the processor to switch to GU Context and clear the screen
             g.start_frame();
-            render::load_texture(include_bytes!("../assets/ferris.bmp"));
+            
+            // Get texture from raw data
+            // TODO: Figure out how to use io to lazyload images when they are needed for textures
+            let ferris_texture = render::Texture::new_raw(IMAGE_SIZE as u32, IMAGE_SIZE as u32, *include_bytes!("../assets/ferris.bin"));
+            
             // Add a rectangle primitive to the draw list
-            render::draw_rect(216, 96, 34, 64, 0xFF00FF00);
+            render::draw_rect(216.0, 96.0, 128.0, 128.0, 0xFFFFFFFF, &ferris_texture);
 
-            // Switch context and begin executing teh draw list
+            // Switch context and begin executing the draw list
             g.end_frame();
         }
     }

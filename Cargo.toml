@@ -3,8 +3,9 @@ name = "factory"
 version = "0.1.0"
 edition = "2021"
 
+[unstable]
+build-std = ["core", "alloc"]
+
 [dependencies]
 psp = "0.3.11"
-embedded-graphics = { version = "0.8.1", features = ["fixed_point"] }
-tinybmp = "0.6.0"
 zero_derive = { path = "./libs/zero_derive" }
