@@ -1,4 +1,4 @@
-use psp::vram_alloc::{get_vram_allocator, SimpleVramAllocator};
+use psp::vram_alloc::{ get_vram_allocator, SimpleVramAllocator };
 type VramAllocator = SimpleVramAllocator;
 
 use core::ffi::c_void;

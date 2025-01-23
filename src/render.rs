@@ -36,13 +36,23 @@ pub struct Texture<const N: usize> {
 }
 
 impl<const N: usize> Texture<N> {
-
     /// Create a new texture from raw data
     pub fn new_raw(width: u32, height: u32, p: [u8; N]) -> Texture<N> {
         Texture {
             width,
             height,
             data: psp::Align16(p),
+        }
+    }
+
+    pub unsafe fn new_ll(width: u32, height: u32, p: *mut c_void) -> Texture<N>
+    {
+        let data = *p.cast::<[u8; N]>();
+
+        Texture {
+            width,
+            height,
+            data: psp::Align16(data)
         }
     }
 }
