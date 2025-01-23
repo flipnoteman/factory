@@ -34,7 +34,7 @@ fn psp_main() {
 
         // TODO: Make a new function that does the next two lines in one line.
         let mut ferris = asset_handler.assets[&ferris_handle];
-        //ferris.load().unwrap();
+        ferris.load().unwrap();
 
         // TODO: Change how type parameters work for the texture creation.
         let ferris_tex = Texture::<IMAGE_LAYOUT_SIZE>::new_ll(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle);
