@@ -5,13 +5,14 @@ extern crate alloc;
 
 mod gu;
 mod render;
-mod asset_handler;
 mod utils;
+mod asset_handling;
 
 use alloc::string::ToString;
 use psp::dprintln;
 use crate::gu::Gu;
-use crate::asset_handler::*;
+use crate::asset_handling::asset_handler::*;
+use crate::asset_handling::assets::*;
 use crate::render::Texture;
 
 psp::module!("factory", 1, 1);
@@ -27,17 +28,20 @@ fn psp_main() {
         // TODO: Make this less cumbersome (Macro?
         let mut asset_handler = AssetHandler::new();
 
-        let ferris_handle = asset_handler.add("ms0:/PSP/GAME/Factory/Assets/ferris.bin").unwrap_or_else(|x| {
+        let ferris = Raw::new("ms0:/PSP/GAME/Factory/Assets/ferris.bin").unwrap_or_else(|x| {
+            dprintln!("{}", x);
+            panic!();
+        });
+
+        let ferris_handle = asset_handler.add(&ferris).unwrap_or_else(|x| {
             dprintln!("{}", x);
             panic!();
         });
 
         // TODO: Make a new function that does the next two lines in one line.
-        let mut ferris = asset_handler.assets[&ferris_handle];
-        ferris.load().unwrap();
 
         // TODO: Change how type parameters work for the texture creation.
-        let ferris_tex = Texture::<IMAGE_LAYOUT_SIZE>::new_ll(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle);
+        let ferris_tex = Texture::<IMAGE_LAYOUT_SIZE>::new_from_raw_ptr(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle);
 
         // Allocate pointers for frame buffers in VRAM
         let mut g = Gu::new();
@@ -52,7 +56,7 @@ fn psp_main() {
 
             // Get texture from raw data
             // TODO: Figure out how to use io to lazyload images when they are needed for textures
-            // let ferris_texture = render::Texture::new_raw(IMAGE_SIZE as u32, IMAGE_SIZE as u32, *include_bytes!("../assets/ferris.bin"));
+            // let ferris_texture = render::Texture::new_raw(IMAGE_SIZE as u32, IMAGE_SIZE as u32, *include_bytes!("../asset_handling/ferris.bin"));
             // Add a rectangle primitive to the draw list
             render::draw_rect(216.0, 96.0, 128.0, 128.0, 0xFFFFFFFF, &ferris_tex);
             // Switch context and begin executing the draw list

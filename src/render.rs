@@ -6,7 +6,6 @@ use core::ptr::{null_mut, slice_from_raw_parts_mut};
 use psp::sys;
 use psp::sys::{sceGuGetMemory, GuPrimitive, VertexType};
 use zero_derive::Zero;
-
 #[repr(C)]
 #[derive(Debug, Zero)]
 struct Vertex {
@@ -37,7 +36,7 @@ pub struct Texture<const N: usize> {
 
 impl<const N: usize> Texture<N> {
     /// Create a new texture from raw data
-    pub fn new_raw(width: u32, height: u32, p: [u8; N]) -> Texture<N> {
+    pub fn new_from_raw(width: u32, height: u32, p: [u8; N]) -> Texture<N> {
         Texture {
             width,
             height,
@@ -45,7 +44,7 @@ impl<const N: usize> Texture<N> {
         }
     }
 
-    pub unsafe fn new_ll(width: u32, height: u32, p: *mut c_void) -> Texture<N>
+    pub unsafe fn new_from_raw_ptr(width: u32, height: u32, p: *mut c_void) -> Texture<N>
     {
         let data = *p.cast::<[u8; N]>();
 
