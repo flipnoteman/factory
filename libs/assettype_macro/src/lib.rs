@@ -33,3 +33,32 @@ pub fn AssetType(_args: TokenStream, input: TokenStream) -> TokenStream  {
 
     TokenStream::from(expanded)
 }
+
+#[proc_macro_attribute]
+pub fn AssetHandler(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut ast = syn::parse_macro_input!(input as DeriveInput);
+    let name = &ast.ident;
+
+    // let mut new_fields = Vec::new();
+
+    // if let syn::Data::Struct(data) = &ast.data {
+    //     if let Fields::Named(fields) = &data.fields {
+    //         for field in &fields.named {
+    //             new_fields.push(field.clone());
+    //         }
+    //     }
+    // }
+
+    let expanded = quote!{
+        use asset_handling::asset_handler::AssetHandler;
+        use lazy_static::*;
+        use spin::mutex::Mutex;
+
+        lazy_static! {
+            static ref #name: Mutex<AssetHandler> = Mutex::new(AssetHandler::new());
+        }
+    };
+
+
+    TokenStream::from(expanded)
+}
