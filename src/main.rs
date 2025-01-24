@@ -28,15 +28,19 @@ fn psp_main() {
         // TODO: Make this less cumbersome (Macro?
         let mut asset_handler = AssetHandler::new();
 
-        let ferris = Raw::new("ms0:/PSP/GAME/Factory/Assets/ferris.bin").unwrap_or_else(|x| {
+        let mut ferris = Raw::new("ms0:/PSP/GAME/Factory/Assets/ferris.bin").unwrap_or_else(|x| {
             dprintln!("{}", x);
             panic!();
         });
+        
+        ferris.load().expect("TODO: panic message");
 
-        let ferris_handle = asset_handler.add(&ferris).unwrap_or_else(|x| {
-            dprintln!("{}", x);
-            panic!();
-        });
+        // let ferris_handle = asset_handler.add(&ferris).unwrap_or_else(|x| {
+        //     dprintln!("{}", x);
+        //     panic!();
+        // });
+
+        // asset_handler.assets.get_mut(&ferris_handle).unwrap().load().expect("TODO: panic message");
 
         // TODO: Make a new function that does the next two lines in one line.
 

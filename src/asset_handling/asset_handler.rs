@@ -17,14 +17,17 @@ impl AssetHandler {
         }
     }
 
-    pub unsafe fn add(&mut self, asset: Box<dyn Asset>) -> Result<Uid, &str> {
+    pub unsafe fn add<T>(&mut self, asset: &T) -> Result<Uid, &str>
+    where
+        T: Asset + Clone + 'static,
+    {
         let mut seed: u64 = 0;
-        if sceRtcGetCurrentTick(*seed) < 0 {
+        if sceRtcGetCurrentTick(seed as *mut u64 ) < 0 {
             return Err("Failed to get current time. Cannot generate random number.");
         }
 
         let mut uid = generate_random_number(seed);
-        while self.assets.try_insert(uid, asset).is_err() {
+        while self.assets.try_insert(uid, Box::new(asset.clone())).is_err() {
             uid += 1;
         }
 

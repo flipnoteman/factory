@@ -1,15 +1,16 @@
 use alloc::alloc::alloc;
+use alloc::boxed::Box;
 use alloc::ffi::CString;
 use core::alloc::Layout;
 use core::ffi::c_void;
 use asset_macros::AssetType;
-use alloc::boxed::Box;
+use core::fmt::Debug;
 use psp::sys::{sceIoClose, sceIoGetstat, sceIoOpen, sceIoRead, IoOpenFlags, SceIoStat};
 
-pub trait Asset {
+pub trait Asset: Debug {
 
-
-    unsafe fn new(filepath: &str) -> Result<Box<dyn Asset>, &str>;
+    // Doesn't need to be here if we're never using "new()" within a context that may be type agnostic
+    // unsafe fn new(filepath: &str) -> Result<Box<dyn Asset>, &str>;
 
     unsafe fn load(&mut self) -> Result<(), &str>;
 }
@@ -24,9 +25,8 @@ pub struct Raw {
     pub size: u32,
 }
 
-impl Asset for Raw {
-
-    unsafe fn new(filepath: &str) -> Result<Box<dyn Asset>, &str> {
+impl Raw {
+    pub(crate) unsafe fn new(filepath: &str) -> Result<Raw, &str> {
         let path = CString::new(filepath).expect("Error in converting filepath to CString");
         let fd = sceIoOpen(path.as_ptr() as *const u8, IoOpenFlags::RD_ONLY, 0777);
         if fd.0 < 0 { return Err("Failed to open file.") }
@@ -43,8 +43,17 @@ impl Asset for Raw {
         let layout = Layout::array::<u8>(filesize as usize).unwrap();
         let handle = alloc(layout) as *mut c_void;
 
-        Ok()
+        Ok(
+            Raw {
+                size: filesize,
+                handle,
+                file_descriptor: fd,
+            }
+        )
     }
+}
+
+impl Asset for Raw {
 
     unsafe fn load(&mut self) -> Result<(), &str> {
         if sceIoRead(self.file_descriptor, self.handle, self.size) < 0 {
