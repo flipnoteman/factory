@@ -11,8 +11,8 @@ mod asset_handling;
 use alloc::string::ToString;
 use psp::dprintln;
 use crate::gu::Gu;
-use crate::asset_handling::asset_handler::*;
-use crate::asset_handling::assets::*;
+use asset_handling::asset_handler::*;
+use asset_handling::assets::*;
 use crate::render::Texture;
 
 psp::module!("factory", 1, 1);
