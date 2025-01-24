@@ -44,14 +44,13 @@ impl<const N: usize> Texture<N> {
         }
     }
 
-    pub unsafe fn new_from_raw_ptr(width: u32, height: u32, p: *mut c_void) -> Texture<N>
-    {
+    pub unsafe fn new_from_raw_ptr(width: u32, height: u32, p: *mut c_void) -> Texture<N> {
         let data = *p.cast::<[u8; N]>();
 
         Texture {
             width,
             height,
-            data: psp::Align16(data)
+            data: psp::Align16(data),
         }
     }
 }

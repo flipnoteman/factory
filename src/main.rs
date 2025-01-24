@@ -7,6 +7,7 @@ mod gu;
 mod render;
 mod utils;
 mod asset_handling;
+mod input;
 
 use alloc::string::ToString;
 use psp::dprintln;
