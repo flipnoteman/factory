@@ -1,15 +1,13 @@
 use alloc::collections::BTreeMap;
 use psp::sys::sceRtcGetCurrentTick;
 use alloc::boxed::Box;
-use alloc::format;
-use alloc::string::ToString;
 use crate::asset_handling::assets::{Asset, Raw};
 use crate::utils::generate_random_number;
 
 pub type Uid = u32;
 
 pub struct AssetHandler {
-    pub assets: BTreeMap<Uid, Box<dyn Asset>>
+    pub assets: BTreeMap<Uid, Box::<dyn Asset>>
 }
 
 impl AssetHandler {
@@ -23,8 +21,8 @@ impl AssetHandler {
     where
         T: Asset + Clone + Default + 'static,
     {
-        let seed: u64 = 0;
-        if sceRtcGetCurrentTick(seed as *mut u64 ) < 0 {
+        let mut seed: u64 = 0;
+        if sceRtcGetCurrentTick(&mut seed as *mut u64) < 0 {
             return Err("Failed to get current time. Cannot generate random number.");
         }
 
@@ -35,7 +33,8 @@ impl AssetHandler {
 
         let mut uid = generate_random_number(seed);
         while self.assets.try_insert(uid, Box::new(asset.clone())).is_err() {
-            uid += 1;
+            seed += 1;
+            uid = generate_random_number(seed);
         }
 
         Ok(uid)
@@ -61,4 +60,3 @@ impl AssetHandler {
         }
     }
 }
-

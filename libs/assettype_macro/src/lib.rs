@@ -21,7 +21,7 @@ pub fn AssetType(_args: TokenStream, input: TokenStream) -> TokenStream  {
         }
     }
 
-    new_fields.push(syn::Field::parse_named.parse2(quote! { pub handle: *mut core::ffi::c_void }).unwrap());
+    new_fields.push(syn::Field::parse_named.parse2(quote! { pub handle: Option<*mut core::ffi::c_void> }).unwrap());
     new_fields.push(syn::Field::parse_named.parse2(quote! { file_descriptor: psp::sys::SceUid }).unwrap());
 
     let expanded = quote! {

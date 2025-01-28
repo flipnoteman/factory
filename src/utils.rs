@@ -1,5 +1,5 @@
-use rand::{RngCore, SeedableRng};
 use rand::rngs::SmallRng;
+use rand::{RngCore, SeedableRng};
 
 #[inline]
 pub fn generate_random_number(seed: u64) -> u32 {
