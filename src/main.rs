@@ -3,8 +3,10 @@
 
 extern crate alloc;
 use alloc::string::ToString;
+
 use psp::dprintln;
 use psp::sys::CtrlButtons;
+
 use psp_engine::*;
 use psp_engine::asset_handling::asset_handler::AssetHandler;
 use psp_engine::asset_handling::assets::{Asset, Raw};
