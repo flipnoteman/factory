@@ -6,7 +6,6 @@ use core::any::Any;
 use core::ffi::c_void;
 use asset_macros::AssetType;
 use core::fmt::Debug;
-use core::ptr::null_mut;
 use psp::sys::{sceIoClose, sceIoGetstat, sceIoOpen, sceIoRead, IoOpenFlags, SceIoStat, SceUid};
 
 pub trait Asset: Debug {
@@ -34,7 +33,7 @@ impl Default for Raw {
     fn default() -> Self {
         Raw {
             size: 0,
-            handle: null_mut(),
+            handle: None,
             file_descriptor: SceUid(1),
         }
     }
@@ -58,7 +57,7 @@ impl Asset for Raw {
         let layout = Layout::array::<u8>(filesize as usize).unwrap();
         let handle = alloc(layout) as *mut c_void;
 
-        self.handle = handle;
+        self.handle = Some(handle);
         self.size = filesize;
         self.file_descriptor = fd;
 
@@ -66,7 +65,7 @@ impl Asset for Raw {
     }
 
     unsafe fn load(&mut self) -> Result<(), &str> {
-        if sceIoRead(self.file_descriptor, self.handle, self.size) < 0 {
+        if sceIoRead(self.file_descriptor, self.handle.expect("REASON"), self.size) < 0 {
             return Err("Failed to read Ferris texture");
         }
 

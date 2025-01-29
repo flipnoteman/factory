@@ -1,5 +1,6 @@
-pub mod asset_handler;
 use psp::dprintln;
+
+pub mod asset_handler;
 pub mod assets;
 
 #[macro_export]

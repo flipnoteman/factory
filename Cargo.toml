@@ -7,11 +7,8 @@ edition = "2021"
 build-std = ["core", "alloc"]
 
 [dependencies]
-rand = {  version = "0.8.5", default-features = false, features = ["small_rng"] }
 psp = "0.3.11"
+psp-engine = { path="./psp-engine" }
 
-[dependencies.asset_macros]
-path = "./libs/asset_macros"
-
-[dependencies.zero_derive]
-path = "./libs/zero_derive"
+[profile.release]
+debug = true
