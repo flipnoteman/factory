@@ -7,23 +7,8 @@ edition = "2021"
 build-std = ["core", "alloc"]
 
 [dependencies]
-rand = {  version = "0.8.5", default-features = false, features = ["small_rng"] }
 psp = "0.3.11"
-
-#[dependencies.spin]
-#version = "0.9.8"
-#default-features = false
-#features = ["mutex", "spin_mutex"]
-
-[dependencies.asset_macros]
-path = "libs/assettype_macro"
-
-[dependencies.zero_derive]
-path = "./libs/zero_derive"
+psp-engine = { path="./psp-engine" }
 
 [profile.release]
 debug = true
-
-#[dependencies.lazy_static]
-#version = "1.5.0"
-#features = ["spin_no_std"]

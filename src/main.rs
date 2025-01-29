@@ -1,24 +1,16 @@
-#![feature(map_try_insert)]
 #![no_std]
 #![no_main]
+
 extern crate alloc;
-
-mod gu;
-mod render;
-mod asset_handling;
-mod utils;
-mod input;
-
-use alloc::boxed::Box;
 use alloc::string::ToString;
 use psp::dprintln;
 use psp::sys::CtrlButtons;
-use crate::gu::Gu;
-use asset_handling::assets::*;
-use crate::render::Texture;
-// use asset_macros::AssetHandler;
-use crate::asset_handling::asset_handler::AssetHandler;
-use crate::input::*;
+use psp_engine::*;
+use psp_engine::asset_handling::asset_handler::AssetHandler;
+use psp_engine::asset_handling::assets::{Asset, Raw};
+use psp_engine::gu::Gu;
+use psp_engine::input::{get_dpad, init_input};
+use psp_engine::render::Texture;
 
 psp::module!("factory", 1, 1);
 
@@ -39,7 +31,6 @@ fn psp_main() {
 
 
         // add_asset!(ferris, "ms0:/PSP/GAME/Factory/Assets/ferris.bin");
-        //
         let ferris_handle = asset_handler.add::<Raw>("ms0:/PSP/GAME/Factory/Assets/ferris.bin").unwrap_or_else(|e| {
             dprintln!("{}", e);
             panic!();

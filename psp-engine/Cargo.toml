@@ -1,0 +1,17 @@
+[package]
+name = "psp-engine"
+version = "0.1.0"
+edition = "2024"
+
+[unstable]
+build-std = ["core", "alloc"]
+
+[dependencies]
+rand = {  version = "0.8.5", default-features = false, features = ["small_rng"] }
+psp = "0.3.11"
+
+[dependencies.asset_macros]
+path = "libs/assettype_macro"
+
+[dependencies.zero_derive]
+path = "libs/zero_derive"
