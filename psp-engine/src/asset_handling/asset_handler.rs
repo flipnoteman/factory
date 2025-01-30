@@ -1,6 +1,7 @@
 use alloc::collections::BTreeMap;
 use psp::sys::sceRtcGetCurrentTick;
 use alloc::boxed::Box;
+use alloc::string::ToString;
 use crate::asset_handling::assets::{Asset, Raw};
 use crate::utils::generate_random_number;
 
@@ -17,27 +18,29 @@ impl AssetHandler {
         }
     }
 
-    pub unsafe fn add<T>(&mut self, filepath: &str) -> Result<Uid, &str>
+    pub fn add<T>(&mut self, filepath: &str) -> Result<Uid, &str>
     where
         T: Asset + Clone + Default + 'static,
     {
-        let mut seed: u64 = 0;
-        if sceRtcGetCurrentTick(&mut seed as *mut u64) < 0 {
-            return Err("Failed to get current time. Cannot generate random number.");
-        }
+        unsafe {
+            let mut seed: u64 = 0;
+            if sceRtcGetCurrentTick(&mut seed as *mut u64) < 0 {
+                return Err("Failed to get current time. Cannot generate random number.");
+            }
 
-        let mut asset = T::default();
-        if asset.init(filepath).is_err() {
-            return Err("Failed to init asset.");
-        }
+            let mut asset = T::default();
+            if asset.init(filepath.to_string()).is_err() {
+                return Err("Failed to init asset.");
+            }
 
-        let mut uid = generate_random_number(seed);
-        while self.assets.try_insert(uid, Box::new(asset.clone())).is_err() {
-            seed += 1;
-            uid = generate_random_number(seed);
-        }
+            let mut uid = generate_random_number(seed);
+            while self.assets.try_insert(uid, Box::new(asset.clone())).is_err() {
+                seed += 1;
+                uid = generate_random_number(seed);
+            }
 
-        Ok(uid)
+            Ok(uid)
+        }
     }
 
     pub fn query<T>(&self, uid: Uid) -> Result<&T, &str>

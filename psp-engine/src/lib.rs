@@ -1,6 +1,8 @@
 #![no_std]
 #![feature(map_try_insert)]
-#![allow(unsafe_code)]
+#![feature(vec_into_raw_parts)]
+#![feature(slice_as_array)]
+
 pub mod input;
 pub mod render;
 pub(crate) mod utils;
