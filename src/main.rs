@@ -27,68 +27,66 @@ fn psp_main() {
 
     psp::enable_home_button();
 
-    unsafe {
-        // TODO: Make this less cumbersome (Macro?)
-        let mut asset_handler = AssetHandler::new();
+    // TODO: Make this less cumbersome (Macro?)
+    let mut asset_handler = AssetHandler::new();
 
 
-        // add_asset!(ferris, "ms0:/PSP/GAME/Factory/Assets/ferris.bin");
-        let ferris_handle = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/ferris.bmp").unwrap_or_else(|e| {
-            dprintln!("{}", e);
-            panic!();
-        });
+    // add_asset!(ferris, "ms0:/PSP/GAME/Factory/Assets/ferris.bin");
+    let ferris_handle = asset_handler.add::<Raw>("ms0:/PSP/GAME/Factory/Assets/ferris.bin").unwrap_or_else(|e| {
+        dprintln!("{}", e);
+        panic!();
+    });
 
-        let ferris = asset_handler.query_mut::<BMP>(ferris_handle).unwrap();
+    let ferris = asset_handler.query_mut::<Raw>(ferris_handle).unwrap();
 
-        match ferris.load() {
-            Ok(_) => {}
-            Err(e) => {dprintln!("ferris_handle.load(): {}", e);}
-        };
+    match ferris.load() {
+        Ok(_) => {}
+        Err(e) => {dprintln!("ferris_handle.load(): {}", e);}
+    };
 
-        // TODO: Change how type parameters work for the texture creation.
-        // let ferris_tex = Texture::<IMAGE_LAYOUT_SIZE>::new_from_raw_ptr(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle.unwrap());
+    // TODO: Change how type parameters work for the texture creation.
+    let ferris_tex = Texture::new_from_raw_ptr(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle.unwrap());
 
-        // Allocate pointers for frame buffers in VRAM
-        let mut g = Gu::new();
+    // Allocate pointers for frame buffers in VRAM
+    let mut g = Gu::new();
 
-        // Initialize the GU libraries with our frame buffers and instantiate any other parameters
-        g.init_gu();
-        init_input();
-        g.set_clear_color(0xff000000);
+    // Initialize the GU libraries with our frame buffers and instantiate any other parameters
+    g.init_gu();
+    init_input();
+    g.set_clear_color(0xff000000);
 
-        let mut x = 216.0;
-        let mut y = 96.0;
+    let mut x = 216.0;
+    let mut y = 96.0;
 
-        loop {
-            // Call the processor to switch to GU Context and clear the screen
-            g.start_frame();
+    loop {
+        // Call the processor to switch to GU Context and clear the screen
+        g.start_frame();
 
-            // Get texture from raw data
-            // TODO: Figure out how to use io to lazyload images when they are needed for textures
-            // let ferris_texture = render::Texture::new_raw(IMAGE_SIZE as u32, IMAGE_SIZE as u32, *include_bytes!("../asset_handling/ferris.bin"));
-            // Add a rectangle primitive to the draw list
+        // Get texture from raw data
+        // TODO: Figure out how to use io to lazyload images when they are needed for textures
+        // let ferris_texture = render::Texture::new_raw(IMAGE_SIZE as u32, IMAGE_SIZE as u32, *include_bytes!("../asset_handling/ferris.bin"));
+        // Add a rectangle primitive to the draw list
 
-            let input = get_dpad();
+        let input = get_dpad();
 
-            if (input & CtrlButtons::LEFT).bits() > 0 {
-                x -= 1.0;
-            }
-
-            if (input & CtrlButtons::RIGHT).bits() > 0 {
-                x += 1.0;
-            }
-
-            if (input & CtrlButtons::UP).bits() > 0 {
-                y -= 1.0;
-            }
-
-            if (input & CtrlButtons::DOWN).bits() > 0 {
-                y += 1.0;
-            }
-
-            // render::draw_rect(x, y, 128.0, 128.0, 0xFFFFFFFF, &ferris_tex);
-            // Switch context and begin executing the draw list
-            g.end_frame();
+        if (input & CtrlButtons::LEFT).bits() > 0 {
+            x -= 1.0;
         }
+
+        if (input & CtrlButtons::RIGHT).bits() > 0 {
+            x += 1.0;
+        }
+
+        if (input & CtrlButtons::UP).bits() > 0 {
+            y -= 1.0;
+        }
+
+        if (input & CtrlButtons::DOWN).bits() > 0 {
+            y += 1.0;
+        }
+
+        render::draw_rect(x, y, 128.0, 128.0, 0xFFFFFFFF, &ferris_tex);
+        // Switch context and begin executing the draw list
+        g.end_frame();
     }
 }

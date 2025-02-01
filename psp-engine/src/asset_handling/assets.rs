@@ -24,27 +24,39 @@ pub trait Asset: Debug + AsAny {
 #[derive(Debug, Clone, Copy)]
 pub struct Raw;
 
+#[derive(Default, Debug, Clone, Copy)]
+#[repr(C, align(16))]
+pub struct BIH {
+    pub header_size: u32,
+    pub width: u32,
+    pub height: u32,
+//  pub    color_planes: u16,
+//  pub    bits_per_pixel: u16,
+    pub compression: u32,
+//     image_size:u32,
+//     x_pixels_per_meter: u32,
+//     y_pixels_per_meter: u32,
+//     colors_used: u32,
+//     important_colors: u32
+}
+
+
 #[AssetType]
 #[derive(Debug, Clone, Copy)]
+#[repr(C, align(16))]
 pub struct BMP {
-    header_size: u32,
-    width: u32,
-    height: u32,
-    color_planes: u16,
-    bits_per_pixel: u16,
-    compression: u32,
-    x_pixels_per_meter: u32,
-    y_pixels_per_meter: u32,
-    colors_used: u32,
-    important_colors: u32
+    pub offset: u32,
+    pub bih: BIH,
 }
 
 impl Asset for Raw {
     fn init(&mut self, filepath: String) -> Result<(), &str> {
         unsafe {
             let fd = open_file(filepath.clone(), IoOpenFlags::RD_ONLY)?;
+            
 
             let stat_layout = Layout::new::<SceIoStat>();
+            
             let stat_handle = alloc(stat_layout) as *mut SceIoStat;
 
             let c_str = CString::new(filepath.as_str()).unwrap();
@@ -126,16 +138,35 @@ impl Asset for BMP {
 
             let size = self.size as usize;
 
-            let h = &*slice_from_raw_parts_mut(handle as *mut u8, self.size as usize);
+            let h = &*slice_from_raw_parts_mut(handle as *mut u8, size);
 
             let magic: [u8; 2] = *h[0..2].as_array::<2>().unwrap();
-            dprintln!("magic: {:?}", magic);
-            let filesize = u32::from_le_bytes(*h[2..6].as_array::<4>().unwrap());
-            dprintln!("size: {:?}", filesize);
-            let offset: u32 = u32::from_le_bytes(*h[10..14].as_array::<4>().unwrap());
-            dprintln!("offset: {:?}", offset);
+            if magic[0] != 0x42 || magic[1] != 0x4D {
+                dealloc(handle as *mut u8, Layout::array::<u8>(self.size as usize).unwrap());
+                return Err("File magic does not match BMP format.");
+            }
+//             let filesize = u32::from_le_bytes(*h[2..6].as_array::<4>().unwrap());
+            let header_size: u32 = u32::from_le_bytes(*h[14..18].as_array::<4>().unwrap());
+            if header_size > 40 {
+                dealloc(handle as *mut u8, Layout::array::<u8>(self.size as usize).unwrap());
+                return Err("Unsupported BMP type, header is larger than 40 bytes");
+            }
+            
+            self.bih.header_size = header_size;
+            self.bih.width = u32::from_le_bytes(*h[18..22].as_array::<4>().unwrap());
+            self.bih.height = u32::from_le_bytes(*h[22..26].as_array::<4>().unwrap());
+            self.bih.compression = u32::from_le_bytes(*h[30..34].as_array::<4>().unwrap());
 
-            //TODO: FIX ME
+            //TODO: See if compression is possible and if it can be implemented
+            if self.bih.compression != 0 {
+                dealloc(handle as *mut u8, Layout::array::<u8>(self.size as usize).unwrap());
+                return Err("BMP Compression not implemented yet.");
+            }
+
+            self.offset = u32::from_le_bytes(*h[10..14].as_array::<4>().unwrap());
+//             let data = h[(offset as usize)..].as_ptr() as *const c_void;
+            
+            //dprintln!("{:?}", self);
         }
         Ok(())
     }

@@ -3,9 +3,12 @@ use alloc::format;
 use alloc::string::String;
 use core::ffi::c_void;
 use core::ptr::{null_mut, slice_from_raw_parts_mut};
-use psp::sys;
+use psp::{dprintln, sys};
 use psp::sys::{sceGuGetMemory, GuPrimitive, VertexType};
 use zero_derive::Zero;
+use alloc::vec::Vec;
+
+use crate::asset_handling::assets::BMP;
 
 #[repr(C)]
 #[derive(Debug, Zero)]
@@ -28,46 +31,58 @@ struct TextureVertex {
     z: f32,
 }
 
-#[repr(C)]
-pub struct Texture<const N: usize> {
+#[repr(C, align(16))]
+pub struct Texture {
     pub width: u32,
     pub height: u32,
-    pub data: psp::Align16<[u8; N]>,
+    pub data: *mut c_void,
 }
 
-impl<const N: usize> Texture<N> {
+impl Texture {
     /// Create a new texture from raw data
-    pub fn new_from_raw(width: u32, height: u32, p: [u8; N]) -> Texture<N> {
+    pub fn new_from_raw(width: u32, height: u32, p: &[u8]) -> Texture {
         Texture {
             width,
             height,
-            data: psp::Align16(p),
+            data: p.as_ptr() as *mut c_void,
         }
     }
 
-    pub fn new_from_raw_ptr(width: u32, height: u32, p: *mut c_void) -> Texture<N>
+    pub fn new_from_raw_ptr(width: u32, height: u32, data: *mut c_void) -> Texture
     {
-        unsafe {
-            let data = *p.cast::<[u8; N]>();
+        Texture {
+            width,
+            height,
+            data
+        }
+    }
 
+    pub fn new_from_bmp(bmp: BMP) -> Texture {
+        unsafe {
+            let d_ptr = bmp.handle.unwrap().offset(bmp.offset as isize);
+            let w = bmp.bih.width;
+            let h = bmp.bih.height;
+            let pad_n = 4 - (w % 4);
+            
             Texture {
-                width,
-                height,
-                data: psp::Align16(data)
-            }
+                width: w,
+                height: h,
+                data: d_ptr,
+            }    
         }
     }
 }
 
-pub fn draw_rect<const N: usize>(
+pub fn draw_rect(
     x: f32,
     y: f32,
     width: f32,
     height: f32,
     color: u32,
-    texture: &Texture<N>,
+    texture: &Texture,
 ) {
     unsafe {
+
         let vert_len = 2;
         let vert_ptr =
             sceGuGetMemory((vert_len * size_of::<TextureVertex>()) as i32) as *mut TextureVertex;
@@ -97,7 +112,7 @@ pub fn draw_rect<const N: usize>(
         sys::sceGuTexMode(sys::TexturePixelFormat::Psm8888, 0, 0, 0);
 
         // Set the texture mapping function to replace all fragments
-        sys::sceGuTexFunc(sys::TextureEffect::Replace, sys::TextureColorComponent::Rgb);
+        sys::sceGuTexFunc(sys::TextureEffect::Replace, sys::TextureColorComponent::Rgba);
 
         // Set texture map
         sys::sceGuTexImage(
@@ -105,7 +120,7 @@ pub fn draw_rect<const N: usize>(
             texture.width as i32,
             texture.height as i32,
             texture.width as i32,
-            &texture.data as *const psp::Align16<_> as *const _,
+            texture.data,
         );
 
         // Enable the 2dtexture state
