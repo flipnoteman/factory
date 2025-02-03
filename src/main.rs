@@ -32,21 +32,22 @@ fn psp_main() {
 
 
     // add_asset!(ferris, "ms0:/PSP/GAME/Factory/Assets/ferris.bin");
-    let ferris_handle = asset_handler.add::<Raw>("ms0:/PSP/GAME/Factory/Assets/ferris.bin").unwrap_or_else(|e| {
+    let ferris_handle = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/ferris.bmp").unwrap_or_else(|e| {
         dprintln!("{}", e);
         panic!();
     });
 
-    let ferris = asset_handler.query_mut::<Raw>(ferris_handle).unwrap();
+    let ferris = asset_handler.query_mut::<BMP>(ferris_handle).unwrap();
 
     match ferris.load() {
         Ok(_) => {}
         Err(e) => {dprintln!("ferris_handle.load(): {}", e);}
     };
-
-    // TODO: Change how type parameters work for the texture creation.
-    let ferris_tex = Texture::new_from_raw_ptr(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle.unwrap());
-
+// 
+//     // TODO: Change how type parameters work for the texture creation.
+//     let ferris_tex = Texture::new_from_raw_ptr(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle.unwrap());
+    let ferris_tex = Texture::from(ferris);
+// 
     // Allocate pointers for frame buffers in VRAM
     let mut g = Gu::new();
 
@@ -60,7 +61,7 @@ fn psp_main() {
 
     loop {
         // Call the processor to switch to GU Context and clear the screen
-        g.start_frame();
+        g.start_frame(true);
 
         // Get texture from raw data
         // TODO: Figure out how to use io to lazyload images when they are needed for textures

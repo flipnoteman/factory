@@ -1,12 +1,13 @@
+#![allow(unused)]
+
 extern crate alloc;
 use alloc::format;
 use alloc::string::String;
 use core::ffi::c_void;
 use core::ptr::{null_mut, slice_from_raw_parts_mut};
-use psp::{dprintln, sys};
+use psp::{sys};
 use psp::sys::{sceGuGetMemory, GuPrimitive, VertexType};
 use zero_derive::Zero;
-use alloc::vec::Vec;
 
 use crate::asset_handling::assets::BMP;
 
@@ -48,20 +49,38 @@ impl Texture {
         }
     }
 
-    pub fn new_from_raw_ptr(width: u32, height: u32, data: *mut c_void) -> Texture
-    {
+    pub fn new_from_raw_ptr(width: u32, height: u32, data: *mut c_void) -> Texture {
         Texture {
             width,
             height,
             data
         }
     }
+}
 
-    pub fn new_from_bmp(bmp: BMP) -> Texture {
+impl From<BMP> for Texture {
+    fn from(value: BMP) -> Self {
         unsafe {
-            let d_ptr = bmp.handle.unwrap().offset(bmp.offset as isize);
-            let w = bmp.bih.width;
-            let h = bmp.bih.height;
+            let d_ptr = value.handle.unwrap().offset(value.offset as isize);
+            let w = value.bih.width;
+            let h = value.bih.height;
+            let pad_n = 4 - (w % 4);
+            
+            Texture {
+                width: w,
+                height: h,
+                data: d_ptr,
+            }    
+        }
+    }
+}
+
+impl From<&mut BMP> for Texture {
+    fn from(value: &mut BMP) -> Self {
+        unsafe {
+            let d_ptr = value.handle.unwrap().offset(value.offset as isize);
+            let w = value.bih.width;
+            let h = value.bih.height;
             let pad_n = 4 - (w % 4);
             
             Texture {

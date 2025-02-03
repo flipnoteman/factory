@@ -6,7 +6,7 @@ use syn::parse::Parser;
 
 #[proc_macro_attribute]
 pub fn AssetType(_args: TokenStream, input: TokenStream) -> TokenStream  {
-    let mut ast = syn::parse_macro_input!(input as DeriveInput);
+    let ast = syn::parse_macro_input!(input as DeriveInput);
     let attrs = &ast.attrs;
     let vis = &ast.vis;
     let name = &ast.ident;

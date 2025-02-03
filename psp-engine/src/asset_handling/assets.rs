@@ -1,23 +1,18 @@
 use alloc::alloc::{alloc, dealloc};
 use alloc::ffi::CString;
-use alloc::format;
 use alloc::string::String;
 use core::alloc::Layout;
 use core::ffi::c_void;
 use asset_macros::AssetType;
 use core::fmt::Debug;
 use core::ptr::slice_from_raw_parts_mut;
-use psp::dprintln;
-use psp::sys::{sceIoClose, sceIoGetstat, sceIoOpen, sceIoRead, IoOpenFlags, SceIoStat, SceUid};
+use psp::sys::{sceIoClose, sceIoGetstat, sceIoRead, IoOpenFlags, SceIoStat};
 use crate::utils::*;
 
 pub trait Asset: Debug + AsAny {
-    // Doesn't need to be here if we're never using "new()" within a context that may be type agnostic
-    // unsafe fn new(filepath: &str) -> Result<Box<dyn Asset>, &str>;
     fn init(&mut self, filepath: String) -> Result<(), &str>;
 
     fn load(&mut self) -> Result<(), &str>;
-
 }
 
 #[AssetType]
@@ -56,17 +51,17 @@ impl Asset for Raw {
             
 
             let stat_layout = Layout::new::<SceIoStat>();
-            
             let stat_handle = alloc(stat_layout) as *mut SceIoStat;
 
             let c_str = CString::new(filepath.as_str()).unwrap();
             if sceIoGetstat(c_str.as_ptr() as *const u8, stat_handle) < 0 {
+                dealloc(stat_handle as *mut u8, stat_layout);
                 return Err("Failed to get file status.");
             };
 
             let filesize = (*stat_handle).st_size as u32;
 
-            let layout = Layout::array::<u8>(filesize as usize).unwrap();
+            let layout = Layout::from_size_align(filesize as usize, 16).unwrap();
             let handle = alloc(layout) as *mut c_void;
 
             self.handle = Some(handle);
@@ -81,14 +76,15 @@ impl Asset for Raw {
         unsafe {
 
             let handle = self.handle.ok_or("Error, handle not present")?;
-
+            
+            let dealloc_layout = Layout::from_size_align(self.size as usize, 16).unwrap();
             if sceIoRead(self.file_descriptor, handle, self.size) < 0 {
-                dealloc(handle as *mut u8, Layout::array::<u8>(self.size as usize).unwrap());
+                dealloc(handle as *mut u8, dealloc_layout);
                 return Err("Failed to read from file.");
             }
 
             if sceIoClose(self.file_descriptor) < 0 {
-                dealloc(handle as *mut u8, Layout::array::<u8>(self.size as usize).unwrap());
+                dealloc(handle as *mut u8, dealloc_layout);
                 return Err("Failed to close file.");
             };
         }
@@ -107,12 +103,13 @@ impl Asset for BMP {
 
             let c_str = CString::new(filepath.as_str()).unwrap();
             if sceIoGetstat(c_str.as_ptr() as *const u8, stat_handle) < 0 {
+                dealloc(stat_handle as *mut u8, stat_layout);
                 return Err("Failed to get file status.");
             };
 
             let filesize = (*stat_handle).st_size as u32;
 
-            let layout = Layout::array::<u8>(filesize as usize).unwrap();
+            let layout = Layout::from_size_align(filesize as usize, 16).unwrap();
             let handle = alloc(layout) as *mut c_void;
 
             self.handle = Some(handle);
@@ -148,7 +145,7 @@ impl Asset for BMP {
 //             let filesize = u32::from_le_bytes(*h[2..6].as_array::<4>().unwrap());
             let header_size: u32 = u32::from_le_bytes(*h[14..18].as_array::<4>().unwrap());
             if header_size > 40 {
-                dealloc(handle as *mut u8, Layout::array::<u8>(self.size as usize).unwrap());
+                dealloc(handle as *mut u8, Layout::from_size_align(self.size as usize, 16).unwrap());
                 return Err("Unsupported BMP type, header is larger than 40 bytes");
             }
             
@@ -164,9 +161,9 @@ impl Asset for BMP {
             }
 
             self.offset = u32::from_le_bytes(*h[10..14].as_array::<4>().unwrap());
-//             let data = h[(offset as usize)..].as_ptr() as *const c_void;
-            
-            //dprintln!("{:?}", self);
+//             let data = h[(self.offset as usize)..].as_ptr() as *const c_void;
+         
+         //dprintln!("{:?}", self);
         }
         Ok(())
     }

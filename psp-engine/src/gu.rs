@@ -66,13 +66,15 @@ impl Gu {
     }
 
     // Switch to gu context, start adding commands and clear screen
-    pub fn start_frame(&self) {
+    pub fn start_frame(&self, clear: bool) {
         unsafe {
             // Switch to GU context
             sys::sceGuStart(GuContextType::Direct, addr_of_mut!(LIST) as *mut _ as *mut c_void);
             // Clear screen
-            sys::sceGuClearColor(self.clear_color);
-            sys::sceGuClear(ClearBuffer::COLOR_BUFFER_BIT);
+            if clear {
+                sys::sceGuClearColor(self.clear_color);
+                sys::sceGuClear(ClearBuffer::COLOR_BUFFER_BIT);
+            }
         }
     }
 
