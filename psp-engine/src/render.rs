@@ -61,14 +61,20 @@ impl Texture {
 impl From<BMP> for Texture {
     fn from(value: BMP) -> Self {
         unsafe {
-            let d_ptr = value.handle.unwrap().offset(value.offset as isize);
-            let w = value.bih.width;
-            let h = value.bih.height;
-            let pad_n = 4 - (w % 4);
+            // Get a pointer to the actual data of the bmp
+            let d_ptr = value.handle.unwrap();
+//             // This defines the rows in a bmp file
+//             let w = value.bih.width;
+//             let h = value.bih.height;
+//             // BMPs are fromatted such that data in a row is padded to fit a multiple of 4 
+//             let pad_n = 4 - (w % 4); 
+// 
+            // Need to figure out a way to take the bytes (which are in 24bit format) and add an
+            // alpha channel and then remove padding
             
             Texture {
-                width: w,
-                height: h,
+                width: value.bih.width,
+                height: value.bih.height,
                 data: d_ptr,
             }    
         }
