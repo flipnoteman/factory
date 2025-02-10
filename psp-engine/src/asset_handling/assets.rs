@@ -111,7 +111,7 @@ impl Asset for BMP {
 
             let filesize = (*stat_handle).st_size as u32;
 
-            let layout = Layout::from_size_align(0x0 as usize, 16).unwrap();
+            let layout = Layout::from_size_align(0x01 as usize, 16).unwrap();
             let handle = alloc(layout) as *mut c_void;
 
             self.handle = Some(handle);
@@ -124,14 +124,13 @@ impl Asset for BMP {
     fn load(&mut self) -> Result<(), &str> {
         unsafe {
             let size = self.size as usize;
-            let handle = self.handle.ok_or("Error, handle not present")? as *mut u8;
 
-            let tmp_layout = Layout::from_size_align(0x40, 16).unwrap();
+            let tmp_layout = Layout::array::<u8>(size).unwrap();
             let tmp_handle = alloc(tmp_layout) as *mut c_void;
             
             // Read in header data to temporary handle
-            if sceIoRead(self.file_descriptor, tmp_handle, 0x40) < 0 {
-                dealloc(tmp_handle as *mut u8, Layout::from_size_align(size, 16).unwrap());
+            if sceIoRead(self.file_descriptor, tmp_handle, size as u32) < 0 {
+                dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
                 return Err("Failed to read from file.");
             }
             
@@ -142,13 +141,13 @@ impl Asset for BMP {
             // THINGS DOWN
             let magic: [u8; 2] = *h[0..2].as_array::<2>().unwrap();
             if magic[0] != 0x42 || magic[1] != 0x4D {
-                dealloc(tmp_handle as *mut u8, Layout::from_size_align(size, 16).unwrap());
+                dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
                 return Err("File magic does not match BMP format.");
             }
             
             let header_size: u32 = u32::from_le_bytes(*h[14..18].as_array::<4>().unwrap());
             if header_size > 40 {
-                dealloc(tmp_handle as *mut u8, Layout::from_size_align(size, 16).unwrap());
+                dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
                 return Err("Unsupported BMP type, header is larger than 40 bytes");
             }
 
@@ -165,24 +164,39 @@ impl Asset for BMP {
             let data_size = pixel_n * 4; // Now we must account for there being an alpha channel
             
             dprintln!("{:?}", pixel_n);
+            
             // Reallocate the memory so that theres enough room for the transformed data
-            let _ = realloc(handle, Layout::from_size_align(0x00, 16).unwrap(), data_size as usize);
+            dealloc(self.handle.unwrap() as *mut u8, Layout::from_size_align(0x1 as usize, 16).unwrap());
+            self.handle = Some(alloc(Layout::from_size_align(data_size as usize, 16).unwrap()) as *mut c_void);
+            let handle = self.handle.ok_or("Error unwrapping handle").unwrap() as *mut u8;
+            
             self.size = data_size;
             
+            // Close file
             if sceIoClose(self.file_descriptor) < 0 {
                 dealloc(handle, Layout::from_size_align(data_size as usize, 16).unwrap());
-                dealloc(tmp_handle as *mut u8, Layout::from_size_align(size, 16).unwrap());
+                dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
                 return Err("Failed to close file.");
             };
 
-            
+            // Now go through all the given pixels and build raw data 
+            let mut o_index = 0;
             for i in 0..pixel_n {
-                let index = 0x4 * i as usize;
-                handle.add(index + 3).write(0xFF);
-                handle.add(index).copy_from((tmp_handle as *mut u8).add(self.offset as usize + index), 3);
+                let n_index = 4 * i;
+                
+                // If width (which equates to row length in bmp) is divisible by index then we dont
+                // need to write those bytes
+                if i != 0 && o_index % self.bih.width != 0 {
+                    o_index += pad_s;
+                }
+                
+                handle.add(n_index as usize).copy_from((tmp_handle as *mut u8).add(self.offset as usize + o_index as usize), 3); // Add color bytes
+                handle.add(n_index as usize + 3).write(0xFF); // Add alpha channel
+                o_index += 1;
             }
            
             //TODO: See if compression is possible and if it can be implemented
+            dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
          
         }
         Ok(())

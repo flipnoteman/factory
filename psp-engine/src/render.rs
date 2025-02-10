@@ -84,10 +84,9 @@ impl From<BMP> for Texture {
 impl From<&mut BMP> for Texture {
     fn from(value: &mut BMP) -> Self {
         unsafe {
-            let d_ptr = value.handle.unwrap().offset(value.offset as isize);
+            let d_ptr = value.handle.unwrap();
             let w = value.bih.width;
             let h = value.bih.height;
-            let pad_n = 4 - (w % 4);
             
             Texture {
                 width: w,
@@ -142,9 +141,12 @@ pub fn draw_rect(
         // Set texture map
         sys::sceGuTexImage(
             sys::MipmapLevel::None,
+            //texture.width as i32,
+            //texture.height as i32,
             texture.width as i32,
             texture.height as i32,
             texture.width as i32,
+            //texture.width as i32 + 2,
             texture.data,
         );
 

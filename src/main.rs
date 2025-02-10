@@ -46,7 +46,7 @@ fn psp_main() {
 // 
 //     // TODO: Change how type parameters work for the texture creation.
 //     let ferris_tex = Texture::new_from_raw_ptr(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle.unwrap());
-    let ferris_tex = Texture::from(ferris);
+    let ferris_tex = Texture::from(&mut *ferris);
 // 
     // Allocate pointers for frame buffers in VRAM
     let mut g = Gu::new();
@@ -86,7 +86,7 @@ fn psp_main() {
             y += 1.0;
         }
 
-        render::draw_rect(x, y, 128.0, 128.0, 0xFFFFFFFF, &ferris_tex);
+        render::draw_rect(x, y, ferris.bih.width as f32, ferris.bih.height as f32, 0xFFFFFFFF, &ferris_tex);
         // Switch context and begin executing the draw list
         g.end_frame();
     }
