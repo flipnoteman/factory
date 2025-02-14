@@ -32,7 +32,7 @@ fn psp_main() {
 
 
     // add_asset!(ferris, "ms0:/PSP/GAME/Factory/Assets/ferris.bin");
-    let texture_asset = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/ferris_64x64.bmp").unwrap_or_else(|e| {
+    let texture_asset = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/coin_1.bmp").unwrap_or_else(|e| {
         dprintln!("{}", e);
         panic!();
     });
@@ -46,7 +46,7 @@ fn psp_main() {
     };
 
 //     // TODO: Change how type parameters work for the texture creation.
-    let ferris_bmp_tex = Texture::from(&mut *texture_handle);
+    let texture = Texture::from(&mut *texture_handle);
 // 
     // Allocate pointers for frame buffers in VRAM
     let mut g = Gu::new();
@@ -58,6 +58,7 @@ fn psp_main() {
 
     let mut x = 216.0;
     let mut y = 96.0;
+    let mut index = 0;
     
     loop {
         
@@ -83,8 +84,14 @@ fn psp_main() {
         }
 
 
-        render::draw_rect(x, y, texture_handle.bih.width as f32, texture_handle.bih.height as f32, 0xFFFFFFFF, &ferris_bmp_tex);
+        render::draw_rect(x, y, 32.0, 32.0, index, 0xFFFFFFFF, &texture);
         
+        index += 1;
+        
+        if index > 11 {
+            index = 0;
+        }
+
         // Switch context and begin executing the draw list
         g.end_frame();
     }

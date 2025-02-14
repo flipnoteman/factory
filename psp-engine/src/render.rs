@@ -10,6 +10,7 @@ use psp::sys::{sceGuGetMemory, GuPrimitive, VertexType};
 use zero_derive::Zero;
 
 use crate::asset_handling::assets::BMP;
+use crate::utils::{convert_ptwo, is_pow_two};
 
 #[repr(C)]
 #[derive(Debug, Zero)]
@@ -36,6 +37,7 @@ struct TextureVertex {
 pub struct Texture {
     pub width: u32,
     pub height: u32,
+    pub adj_size: (u32, u32),
     pub data: *mut c_void,
 }
 
@@ -45,6 +47,7 @@ impl Texture {
         Texture {
             width,
             height,
+            adj_size: convert_ptwo(width, height),
             data: p.as_ptr() as *mut c_void,
         }
     }
@@ -53,6 +56,7 @@ impl Texture {
         Texture {
             width,
             height,
+            adj_size: convert_ptwo(width, height),
             data
         }
     }
@@ -63,18 +67,11 @@ impl From<BMP> for Texture {
         unsafe {
             // Get a pointer to the actual data of the bmp
             let d_ptr = value.handle.unwrap();
-//             // This defines the rows in a bmp file
-//             let w = value.bih.width;
-//             let h = value.bih.height;
-//             // BMPs are fromatted such that data in a row is padded to fit a multiple of 4 
-//             let pad_n = 4 - (w % 4); 
-// 
-            // Need to figure out a way to take the bytes (which are in 24bit format) and add an
-            // alpha channel and then remove padding
             
             Texture {
                 width: value.bih.width,
                 height: value.bih.height,
+                adj_size: convert_ptwo(value.bih.width, value.bih.height),
                 data: d_ptr,
             }    
         }
@@ -91,6 +88,7 @@ impl From<&mut BMP> for Texture {
             Texture {
                 width: w,
                 height: h,
+                adj_size: convert_ptwo(w, h),
                 data: d_ptr,
             }    
         }
@@ -102,6 +100,7 @@ pub fn draw_rect(
     y: f32,
     width: f32,
     height: f32,
+    index: u32,
     color: u32,
     texture: &Texture,
 ) {
@@ -115,15 +114,25 @@ pub fn draw_rect(
         (*vertices)[0].zero();
         (*vertices)[1].zero();
 
+        let tex_w = texture.width / width as u32;
+        let tex_h = texture.height / height as u32;
+        let mut x_ind = index % tex_w; 
+        let mut y_ind = index / tex_w;
+
+        let x_offset = x_ind as f32 * width;
+        let y_offset = y_ind as f32 * height;
+
         // Define vertex 1
+        (*vertices)[0].u = 0. + x_offset;
+        (*vertices)[0].v = 0. + y_offset;
         (*vertices)[0].x = x;
         (*vertices)[0].y = y;
 
         (*vertices)[0].color = color;
 
         // Define vertex 2
-        (*vertices)[1].u = width;
-        (*vertices)[1].v = height;
+        (*vertices)[1].u = width + x_offset;
+        (*vertices)[1].v = height + y_offset;
         (*vertices)[1].x = x + width;
         (*vertices)[1].y = y + height;
 
@@ -138,16 +147,14 @@ pub fn draw_rect(
         // Set the texture mapping function to replace all fragments
         sys::sceGuTexFunc(sys::TextureEffect::Replace, sys::TextureColorComponent::Rgba);
 
-
         // Set texture map
         sys::sceGuTexImage(
             sys::MipmapLevel::None,
-            //texture.width as i32,
-            //texture.height as i32,
-            texture.width as i32,
-            texture.height as i32,
-            texture.width as i32,
-            //texture.width as i32 + 2,
+            
+            texture.adj_size.0 as i32, // Needs to be power of 2
+            texture.adj_size.1 as i32, // Needs to be power of 2
+            texture.width as i32, // Needs to a multiple of 4
+            
             texture.data,
         );
 

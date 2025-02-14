@@ -33,3 +33,30 @@ pub fn open_file(filepath: String, io_flags: IoOpenFlags) -> Result<SceUid, &'st
         Ok(fd)
     }
 }
+
+#[inline]
+pub fn is_pow_two(n: u32) -> bool {
+    return (n & (n-1) == 0) && n != 0;
+}
+
+#[inline]
+fn to_ptwo(n: u32) -> u32 {
+    if n == 0 {
+        return 1;
+    }
+    let mut power = 1;
+    while power < n {
+        power <<= 1;
+    }
+    power
+}
+
+pub fn convert_ptwo(x: u32, y: u32) -> (u32, u32) {
+    match (is_pow_two(x), is_pow_two(y)) {
+        (true, true) => (x, y),
+        (true, false) => (x, to_ptwo(y)),
+        (false, true) => (to_ptwo(x), y),
+        _ => (to_ptwo(x), to_ptwo(y)),
+   }
+}
+
