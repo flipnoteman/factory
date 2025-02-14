@@ -48,8 +48,9 @@ pub struct BMP {
 impl Asset for Raw {
     fn init(&mut self, filepath: String) -> Result<(), &str> {
         unsafe {
+            // Think about how this operates, if something goes wrong, do we want the file to still
+            // be open?
             let fd = open_file(filepath.clone(), IoOpenFlags::RD_ONLY)?;
-            
 
             let stat_layout = Layout::new::<SceIoStat>();
             let stat_handle = alloc(stat_layout) as *mut SceIoStat;
@@ -62,10 +63,6 @@ impl Asset for Raw {
 
             let filesize = (*stat_handle).st_size as u32;
 
-            let layout = Layout::from_size_align(filesize as usize, 16).unwrap();
-            let handle = alloc(layout) as *mut c_void;
-
-            self.handle = Some(handle);
             self.size = filesize;
             self.file_descriptor = fd;
         }
@@ -76,7 +73,8 @@ impl Asset for Raw {
     fn load(&mut self) -> Result<(), &str> {
         unsafe {
 
-            let handle = self.handle.ok_or("Error, handle not present")?;
+            let layout = Layout::from_size_align(self.size as usize, 16).unwrap();
+            let handle = alloc(layout) as *mut c_void;
             
             let dealloc_layout = Layout::from_size_align(self.size as usize, 16).unwrap();
             if sceIoRead(self.file_descriptor, handle, self.size) < 0 {
@@ -88,6 +86,8 @@ impl Asset for Raw {
                 dealloc(handle as *mut u8, dealloc_layout);
                 return Err("Failed to close file.");
             };
+            
+            self.handle = Some(handle);
         }
 
         Ok(())
@@ -111,10 +111,6 @@ impl Asset for BMP {
 
             let filesize = (*stat_handle).st_size as u32;
 
-            let layout = Layout::from_size_align(0x01 as usize, 16).unwrap();
-            let handle = alloc(layout) as *mut c_void;
-
-            self.handle = Some(handle);
             self.size = filesize;
             self.file_descriptor = fd;
         }
@@ -136,15 +132,6 @@ impl Asset for BMP {
             
             // Get data from header
             let h = &*slice_from_raw_parts_mut(tmp_handle as *mut u8, size);
-
-            // Check magic to make sure file is valid, THIS PART MAY BE UNNECCESARY AND JUST SLOW
-            // THINGS DOWN
-            let magic: [u8; 2] = *h[0..2].as_array::<2>().unwrap();
-            if magic[0] != 0x42 || magic[1] != 0x4D {
-                dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
-                return Err("File magic does not match BMP format.");
-            }
-            
             let header_size: u32 = u32::from_le_bytes(*h[14..18].as_array::<4>().unwrap());
 
             self.bih.header_size = header_size;
@@ -158,7 +145,6 @@ impl Asset for BMP {
             let data_size = self.bih.width * self.bih.height * 4; // Now we must account for there being an alpha channel
                         
             // Reallocate the memory so that theres enough room for the transformed data
-            dealloc(self.handle.unwrap() as *mut u8, Layout::from_size_align(0x1 as usize, 16).unwrap());
             self.handle = Some(alloc(Layout::from_size_align(data_size as usize, 16).unwrap()) as *mut c_void);
             let handle = self.handle.ok_or("Error unwrapping handle").unwrap() as *mut u8;
             
