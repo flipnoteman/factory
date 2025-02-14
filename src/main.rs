@@ -16,9 +16,9 @@ use psp_engine::render::Texture;
 
 psp::module!("factory", 1, 1);
 
-const IMAGE_SIZE: usize = 128;
-const IMAGE_PIXELS: usize = IMAGE_SIZE * IMAGE_SIZE;
-const IMAGE_LAYOUT_SIZE: usize = IMAGE_PIXELS * 4;
+// const IMAGE_SIZE: usize = 128;
+// const IMAGE_PIXELS: usize = IMAGE_SIZE * IMAGE_SIZE;
+// const IMAGE_LAYOUT_SIZE: usize = IMAGE_PIXELS * 4;
 
 // #[AssetHandler]
 // struct GameAssets;
@@ -32,21 +32,21 @@ fn psp_main() {
 
 
     // add_asset!(ferris, "ms0:/PSP/GAME/Factory/Assets/ferris.bin");
-    let ferris_handle = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/ferris.bmp").unwrap_or_else(|e| {
+    let texture_asset = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/ferris_64x64.bmp").unwrap_or_else(|e| {
         dprintln!("{}", e);
         panic!();
     });
 
-    let ferris = asset_handler.query_mut::<BMP>(ferris_handle).unwrap();
 
-    match ferris.load() {
+    let texture_handle = asset_handler.query_mut::<BMP>(texture_asset).unwrap();
+
+    match texture_handle.load() {
         Ok(_) => {}
         Err(e) => {dprintln!("ferris_handle.load(): {}", e);}
     };
-// 
+
 //     // TODO: Change how type parameters work for the texture creation.
-//     let ferris_tex = Texture::new_from_raw_ptr(IMAGE_SIZE as u32, IMAGE_SIZE as u32, ferris.handle.unwrap());
-    let ferris_tex = Texture::from(&mut *ferris);
+    let ferris_bmp_tex = Texture::from(&mut *texture_handle);
 // 
     // Allocate pointers for frame buffers in VRAM
     let mut g = Gu::new();
@@ -58,15 +58,11 @@ fn psp_main() {
 
     let mut x = 216.0;
     let mut y = 96.0;
-
+    
     loop {
+        
         // Call the processor to switch to GU Context and clear the screen
         g.start_frame(true);
-
-        // Get texture from raw data
-        // TODO: Figure out how to use io to lazyload images when they are needed for textures
-        // let ferris_texture = render::Texture::new_raw(IMAGE_SIZE as u32, IMAGE_SIZE as u32, *include_bytes!("../asset_handling/ferris.bin"));
-        // Add a rectangle primitive to the draw list
 
         let input = get_dpad();
 
@@ -86,7 +82,9 @@ fn psp_main() {
             y += 1.0;
         }
 
-        render::draw_rect(x, y, ferris.bih.width as f32, ferris.bih.height as f32, 0xFFFFFFFF, &ferris_tex);
+
+        render::draw_rect(x, y, texture_handle.bih.width as f32, texture_handle.bih.height as f32, 0xFFFFFFFF, &ferris_bmp_tex);
+        
         // Switch context and begin executing the draw list
         g.end_frame();
     }

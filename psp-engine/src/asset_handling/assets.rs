@@ -27,7 +27,7 @@ pub struct BIH {
     pub width: u32,
     pub height: u32,
 //  pub    color_planes: u16,
-//  pub    bits_per_pixel: u16,
+    pub bits: u16,
     pub compression: u32,
 //     image_size:u32,
 //     x_pixels_per_meter: u32,
@@ -146,25 +146,17 @@ impl Asset for BMP {
             }
             
             let header_size: u32 = u32::from_le_bytes(*h[14..18].as_array::<4>().unwrap());
-            if header_size > 40 {
-                dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
-                return Err("Unsupported BMP type, header is larger than 40 bytes");
-            }
 
             self.bih.header_size = header_size;
-            self.offset = u32::from_le_bytes(*h[10..14].as_array::<4>().unwrap());
+            self.offset = u32::from_le_bytes(*h[0x0A..0x0E].as_array::<4>().unwrap());
+            self.bih.bits = u16::from_le_bytes(*h[0x1C..0x1E].as_array::<2>().unwrap());
             self.bih.width = u32::from_le_bytes(*h[18..22].as_array::<4>().unwrap());
             self.bih.height = u32::from_le_bytes(*h[22..26].as_array::<4>().unwrap()); 
-            let image_size = u32::from_le_bytes(*h[0x22..0x26].as_array::<4>().unwrap()); 
             
-            let pad_s = 4 - (self.bih.width % 4); // Number of bytes to pad each row
-            let pad_n = pad_s * self.bih.height; // Total number of pad bytes
-            let pixel_n = (image_size - pad_n) / 3; // Get pixel count, should always be multiple of 3
-
-            let data_size = pixel_n * 4; // Now we must account for there being an alpha channel
-            
-            dprintln!("{:?}", pixel_n);
-            
+            let row_size = if self.bih.bits == 32 { self.bih.width * 4 } else { self.bih.width * 3 };
+            let pad_s = (4 - (row_size % 4)) % 4; // Number of bytes to pad each row
+            let data_size = self.bih.width * self.bih.height * 4; // Now we must account for there being an alpha channel
+                        
             // Reallocate the memory so that theres enough room for the transformed data
             dealloc(self.handle.unwrap() as *mut u8, Layout::from_size_align(0x1 as usize, 16).unwrap());
             self.handle = Some(alloc(Layout::from_size_align(data_size as usize, 16).unwrap()) as *mut c_void);
@@ -179,25 +171,46 @@ impl Asset for BMP {
                 return Err("Failed to close file.");
             };
 
+            let src_ptr = (tmp_handle as *mut u8).add(self.offset as usize);
+
             // Now go through all the given pixels and build raw data 
-            let mut o_index = 0;
-            for i in 0..pixel_n {
-                let n_index = 4 * i;
-                
-                // If width (which equates to row length in bmp) is divisible by index then we dont
-                // need to write those bytes
-                if i != 0 && o_index % self.bih.width != 0 {
-                    o_index += pad_s;
+            for y in 0..self.bih.height {
+
+                // Starting row
+                let src_row = if self.bih.height > 0 { self.bih.height - y - 1} else { y };
+                let src_start = src_row * (row_size + pad_s); // 
+
+                let dest_start = y * self.bih.width * 4;
+ 
+                for x in 0..self.bih.width {
+                    
+                    let (src_pixel, dest_pixel) = match self.bih.bits {
+                        32 => (src_start + (x * 4), dest_start + (x * 4)),
+                        _ => (src_start + (x * 3), dest_start + (x * 4))
+
+                    };
+
+                    let b = *src_ptr.add(src_pixel as usize);
+                    let g = *src_ptr.add(src_pixel as usize + 1);
+                    let r = *src_ptr.add(src_pixel as usize + 2);
+
+                    handle.add(dest_pixel as usize).write(r);
+                    handle.add(dest_pixel as usize + 1).write(g);
+                    handle.add(dest_pixel as usize + 2).write(b);
+                    
+                    
+                    if self.bih.bits != 32 {
+                        handle.add(dest_pixel as usize + 3).write(0xFF);
+                    } else {
+                        let a = *src_ptr.add(src_pixel as usize + 3);
+                        handle.add(dest_pixel as usize + 3).write(a);
+                    }
                 }
-                
-                handle.add(n_index as usize).copy_from((tmp_handle as *mut u8).add(self.offset as usize + o_index as usize), 3); // Add color bytes
-                handle.add(n_index as usize + 3).write(0xFF); // Add alpha channel
-                o_index += 1;
             }
            
-            //TODO: See if compression is possible and if it can be implemented
             dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
          
+            //TODO: See if compression is possible and if it can be implemented
         }
         Ok(())
     }

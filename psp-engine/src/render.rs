@@ -138,6 +138,7 @@ pub fn draw_rect(
         // Set the texture mapping function to replace all fragments
         sys::sceGuTexFunc(sys::TextureEffect::Replace, sys::TextureColorComponent::Rgba);
 
+
         // Set texture map
         sys::sceGuTexImage(
             sys::MipmapLevel::None,
