@@ -48,7 +48,12 @@ fn to_ptwo(n: u32) -> u32 {
     while power < n {
         power <<= 1;
     }
+
+    if power > 512 {
+        return 512
+    }
     power
+    
 }
 
 pub fn convert_ptwo(x: u32, y: u32) -> (u32, u32) {

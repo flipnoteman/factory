@@ -28,7 +28,7 @@ fn psp_main() {
     psp::enable_home_button();
 
     // TODO: Make this less cumbersome (Macro?)
-    let mut asset_handler = AssetHandler::new();
+    let asset_handler = &mut AssetHandler::new();
 
 
     // add_asset!(ferris, "ms0:/PSP/GAME/Factory/Assets/ferris.bin");
@@ -36,17 +36,28 @@ fn psp_main() {
         dprintln!("{}", e);
         panic!();
     });
+    
+    let font_asset = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/Fonts/default_font16x16.bmp").unwrap_or_else(|e| {
+        dprintln!("{}", e);
+        panic!();
+    });
 
-
-    let texture_handle = asset_handler.query_mut::<BMP>(texture_asset).unwrap();
+    let mut texture_handle = asset_handler.query_mut::<BMP>(texture_asset).unwrap();
+    let mut font_handle = asset_handler.query_mut::<BMP>(font_asset).unwrap();
 
     match texture_handle.load() {
         Ok(_) => {}
         Err(e) => {dprintln!("ferris_handle.load(): {}", e);}
     };
+    
+    match font_handle.load() {
+        Ok(_) => {}
+        Err(e) => {dprintln!("font_handle.load(): {}", e);}
+    };
 
 //     // TODO: Change how type parameters work for the texture creation.
     let texture = Texture::from(&mut *texture_handle);
+    let font = Texture::from(&mut *font_handle);
 // 
     // Allocate pointers for frame buffers in VRAM
     let mut g = Gu::new();
@@ -59,6 +70,8 @@ fn psp_main() {
     let mut x = 216.0;
     let mut y = 96.0;
     let mut index = 0;
+
+    dprintln!("{:?}", font.adj_size);
     
     loop {
         
@@ -85,6 +98,7 @@ fn psp_main() {
 
 
         render::draw_rect(x, y, 32.0, 32.0, index, 0xFFFFFFFF, &texture);
+        render::draw_rect(20., 20., 16.0, 16.0, 4, 0xFFFFFFFF, &font);
         
         index += 1;
         
