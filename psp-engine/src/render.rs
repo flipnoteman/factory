@@ -5,12 +5,12 @@ use alloc::format;
 use alloc::string::String;
 use core::ffi::c_void;
 use core::ptr::{null_mut, slice_from_raw_parts_mut};
-use psp::{sys};
-use psp::sys::{sceGuGetMemory, GuPrimitive, VertexType};
+use psp::sys;
+use psp::sys::{GuPrimitive, VertexType, sceGuGetMemory};
 use zero_derive::Zero;
 
-use crate::asset_handling::assets::BMP;
-use crate::utils::{convert_ptwo, is_pow_two};
+use asset_handling::assets::BMP;
+use misc::{convert_ptwo, is_pow_two};
 
 #[repr(C)]
 #[derive(Debug, Zero)]
@@ -57,7 +57,7 @@ impl Texture {
             width,
             height,
             adj_size: convert_ptwo(width, height),
-            data
+            data,
         }
     }
 }
@@ -67,13 +67,13 @@ impl From<BMP> for Texture {
         unsafe {
             // Get a pointer to the actual data of the bmp
             let d_ptr = value.handle.unwrap();
-            
+
             Texture {
                 width: value.bih.width,
                 height: value.bih.height,
                 adj_size: convert_ptwo(value.bih.width, value.bih.height),
                 data: d_ptr,
-            }    
+            }
         }
     }
 }
@@ -84,13 +84,13 @@ impl From<&mut BMP> for Texture {
             let d_ptr = value.handle.unwrap();
             let w = value.bih.width;
             let h = value.bih.height;
-            
+
             Texture {
                 width: w,
                 height: h,
                 adj_size: convert_ptwo(w, h),
                 data: d_ptr,
-            }    
+            }
         }
     }
 }
@@ -105,7 +105,6 @@ pub fn draw_rect(
     texture: &Texture,
 ) {
     unsafe {
-
         let vert_len = 2;
         let vert_ptr =
             sceGuGetMemory((vert_len * size_of::<TextureVertex>()) as i32) as *mut TextureVertex;
@@ -116,7 +115,7 @@ pub fn draw_rect(
 
         let tex_w = texture.width / width as u32;
         let tex_h = texture.height / height as u32;
-        let mut x_ind = index % tex_w; 
+        let mut x_ind = index % tex_w;
         let mut y_ind = index / tex_w;
 
         let x_offset = x_ind as f32 * width;
@@ -145,16 +144,17 @@ pub fn draw_rect(
         sys::sceGuTexMode(sys::TexturePixelFormat::Psm8888, 0, 0, 0);
 
         // Set the texture mapping function to replace all fragments
-        sys::sceGuTexFunc(sys::TextureEffect::Replace, sys::TextureColorComponent::Rgba);
+        sys::sceGuTexFunc(
+            sys::TextureEffect::Replace,
+            sys::TextureColorComponent::Rgba,
+        );
 
         // Set texture map
         sys::sceGuTexImage(
             sys::MipmapLevel::None,
-            
             texture.adj_size.0 as i32, // Needs to be power of 2
             texture.adj_size.1 as i32, // Needs to be power of 2
-            texture.width as i32, // Needs to a multiple of 4
-            
+            texture.width as i32,      // Needs to a multiple of 4
             texture.data,
         );
 

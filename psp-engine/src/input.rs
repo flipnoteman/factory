@@ -1,5 +1,8 @@
 use psp;
-use psp::sys::{sceCtrlReadBufferPositive, sceCtrlSetSamplingCycle, sceCtrlSetSamplingMode, CtrlButtons, CtrlMode, SceCtrlData};
+use psp::sys::{
+    CtrlButtons, CtrlMode, SceCtrlData, sceCtrlReadBufferPositive, sceCtrlSetSamplingCycle,
+    sceCtrlSetSamplingMode,
+};
 
 pub fn get_dpad() -> CtrlButtons {
     unsafe {

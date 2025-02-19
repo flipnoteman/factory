@@ -1,8 +1,12 @@
+#![no_std]
+
+extern crate alloc;
 use alloc::ffi::CString;
-use core::any::Any;
-use psp::sys::{sceIoOpen, IoOpenFlags, SceUid};
-use rand::rngs::SmallRng;
+use core::result::Result::{self, Err, Ok};
 use alloc::string::String;
+use core::any::Any;
+use psp::sys::{IoOpenFlags, SceUid, sceIoOpen};
+use rand::rngs::SmallRng;
 use rand::{RngCore, SeedableRng};
 
 #[inline]
@@ -20,15 +24,21 @@ impl<T> AsAny for T
 where
     T: 'static,
 {
-    fn as_any(&self) -> &dyn Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 pub fn open_file(filepath: String, io_flags: IoOpenFlags) -> Result<SceUid, &'static str> {
     unsafe {
         let path = CString::new(filepath).expect("Error in converting filepath to CString");
         let fd = sceIoOpen(path.as_ptr() as *const u8, io_flags, 0777);
-        if fd.0 < 0 { return Err("Failed to open file.") }
+        if fd.0 < 0 {
+            return Err("Failed to open file.");
+        }
 
         Ok(fd)
     }
@@ -36,7 +46,7 @@ pub fn open_file(filepath: String, io_flags: IoOpenFlags) -> Result<SceUid, &'st
 
 #[inline]
 pub fn is_pow_two(n: u32) -> bool {
-    return (n & (n-1) == 0) && n != 0;
+    return (n & (n - 1) == 0) && n != 0;
 }
 
 #[inline]
@@ -50,10 +60,9 @@ fn to_ptwo(n: u32) -> u32 {
     }
 
     if power > 512 {
-        return 512
+        return 512;
     }
     power
-    
 }
 
 pub fn convert_ptwo(x: u32, y: u32) -> (u32, u32) {
@@ -62,6 +71,6 @@ pub fn convert_ptwo(x: u32, y: u32) -> (u32, u32) {
         (true, false) => (x, to_ptwo(y)),
         (false, true) => (to_ptwo(x), y),
         _ => (to_ptwo(x), to_ptwo(y)),
-   }
+    }
 }
 

@@ -1,0 +1,10 @@
+[package]
+name = "psp-alloc"
+version = "0.1.0"
+edition = "2024"
+
+[unstable]
+build-std = ["core", "alloc"]
+
+[dependencies]
+

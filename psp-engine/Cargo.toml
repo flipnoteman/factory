@@ -15,3 +15,12 @@ path = "macros/assettype_macro"
 
 [dependencies.zero_derive]
 path = "macros/zero_derive"
+
+[dependencies.psp-alloc]
+path = "crates/psp-alloc"
+
+[dependencies.asset-handling]
+path = "crates/asset-handling"
+
+[dependencies.misc]
+path = "crates/misc"

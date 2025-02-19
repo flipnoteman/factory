@@ -1,10 +1,12 @@
-use psp::vram_alloc::{ get_vram_allocator, SimpleVramAllocator };
+use psp::vram_alloc::{SimpleVramAllocator, get_vram_allocator};
 type VramAllocator = SimpleVramAllocator;
 
 use core::ffi::c_void;
 use core::ptr::addr_of_mut;
-use psp::{sys, BUF_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH};
-use psp::sys::{ClearBuffer, DepthFunc, DisplayPixelFormat, GuContextType, GuState, TexturePixelFormat};
+use psp::sys::{
+    ClearBuffer, DepthFunc, DisplayPixelFormat, GuContextType, GuState, TexturePixelFormat,
+};
+use psp::{BUF_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, sys};
 
 const DISPLAY_LIST_LENGTH: usize = 0x40000;
 static mut LIST: psp::Align16<[u64; DISPLAY_LIST_LENGTH]> = psp::Align16([0; DISPLAY_LIST_LENGTH]);
@@ -21,9 +23,15 @@ pub struct Gu {
 impl Gu {
     pub fn new() -> Gu {
         let allocator = get_vram_allocator().unwrap();
-        let fbp0 = allocator.alloc_texture_pixels(BUF_WIDTH, SCREEN_HEIGHT, TexturePixelFormat::Psm8888).as_mut_ptr_from_zero();
-        let fbp1 = allocator.alloc_texture_pixels(BUF_WIDTH, SCREEN_HEIGHT, TexturePixelFormat::Psm8888).as_mut_ptr_from_zero();
-        let zbp = allocator.alloc_texture_pixels(BUF_WIDTH, SCREEN_HEIGHT, TexturePixelFormat::Psm4444).as_mut_ptr_from_zero();
+        let fbp0 = allocator
+            .alloc_texture_pixels(BUF_WIDTH, SCREEN_HEIGHT, TexturePixelFormat::Psm8888)
+            .as_mut_ptr_from_zero();
+        let fbp1 = allocator
+            .alloc_texture_pixels(BUF_WIDTH, SCREEN_HEIGHT, TexturePixelFormat::Psm8888)
+            .as_mut_ptr_from_zero();
+        let zbp = allocator
+            .alloc_texture_pixels(BUF_WIDTH, SCREEN_HEIGHT, TexturePixelFormat::Psm4444)
+            .as_mut_ptr_from_zero();
         let clear_color = 0xFFFFFFFF;
 
         Gu {
@@ -31,7 +39,7 @@ impl Gu {
             fbp0,
             fbp1,
             zbp,
-            clear_color
+            clear_color,
         }
     }
 
@@ -44,9 +52,21 @@ impl Gu {
             sys::sceGuInit();
 
             // Set up buffers
-            sys::sceGuStart(GuContextType::Direct, addr_of_mut!(LIST) as *mut _ as *mut c_void);
-            sys::sceGuDrawBuffer(DisplayPixelFormat::Psm8888, self.fbp0 as _, BUF_WIDTH as i32);
-            sys::sceGuDispBuffer(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32, self.fbp1 as _, BUF_WIDTH as i32);
+            sys::sceGuStart(
+                GuContextType::Direct,
+                addr_of_mut!(LIST) as *mut _ as *mut c_void,
+            );
+            sys::sceGuDrawBuffer(
+                DisplayPixelFormat::Psm8888,
+                self.fbp0 as _,
+                BUF_WIDTH as i32,
+            );
+            sys::sceGuDispBuffer(
+                SCREEN_WIDTH as i32,
+                SCREEN_HEIGHT as i32,
+                self.fbp1 as _,
+                BUF_WIDTH as i32,
+            );
             sys::sceGuDepthBuffer(self.zbp as _, BUF_WIDTH as i32);
 
             // Set up viewport
@@ -69,7 +89,10 @@ impl Gu {
     pub fn start_frame(&self, clear: bool) {
         unsafe {
             // Switch to GU context
-            sys::sceGuStart(GuContextType::Direct, addr_of_mut!(LIST) as *mut _ as *mut c_void);
+            sys::sceGuStart(
+                GuContextType::Direct,
+                addr_of_mut!(LIST) as *mut _ as *mut c_void,
+            );
             // Clear screen
             if clear {
                 sys::sceGuClearColor(self.clear_color);
@@ -95,4 +118,3 @@ impl Gu {
         }
     }
 }
-

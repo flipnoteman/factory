@@ -8,7 +8,7 @@ use psp::dprintln;
 use psp::sys::CtrlButtons;
 
 use psp_engine::*;
-use psp_engine::asset_handling::asset_handler::AssetHandler;
+use psp_engine::asset_handling::handler::AssetHandler;
 use psp_engine::asset_handling::assets::{Asset, Raw, BMP};
 use psp_engine::gu::Gu;
 use psp_engine::input::{get_dpad, init_input};
@@ -37,27 +37,15 @@ fn psp_main() {
         panic!();
     });
     
-    let font_asset = asset_handler.add::<BMP>("ms0:/PSP/GAME/Factory/Assets/Fonts/default_font16x16.bmp").unwrap_or_else(|e| {
-        dprintln!("{}", e);
-        panic!();
-    });
-
     let mut texture_handle = asset_handler.query_mut::<BMP>(texture_asset).unwrap();
-    let mut font_handle = asset_handler.query_mut::<BMP>(font_asset).unwrap();
 
     match texture_handle.load() {
         Ok(_) => {}
         Err(e) => {dprintln!("ferris_handle.load(): {}", e);}
     };
     
-    match font_handle.load() {
-        Ok(_) => {}
-        Err(e) => {dprintln!("font_handle.load(): {}", e);}
-    };
-
 //     // TODO: Change how type parameters work for the texture creation.
     let texture = Texture::from(&mut *texture_handle);
-    let font = Texture::from(&mut *font_handle);
 // 
     // Allocate pointers for frame buffers in VRAM
     let mut g = Gu::new();
@@ -71,8 +59,6 @@ fn psp_main() {
     let mut y = 96.0;
     let mut index = 0;
 
-    dprintln!("{:?}", font.adj_size);
-    
     loop {
         
         // Call the processor to switch to GU Context and clear the screen
@@ -98,7 +84,6 @@ fn psp_main() {
 
 
         render::draw_rect(x, y, 32.0, 32.0, index, 0xFFFFFFFF, &texture);
-        render::draw_rect(20., 20., 16.0, 16.0, 4, 0xFFFFFFFF, &font);
         
         index += 1;
         

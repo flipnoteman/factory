@@ -1,6 +1,9 @@
-use psp::dprintln;
+#![no_std]
+#![feature(slice_as_array)]
+#![feature(map_try_insert)]
 
-pub mod asset_handler;
+extern crate alloc;
+pub mod handler;
 pub mod assets;
 
 #[macro_export]
