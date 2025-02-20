@@ -11,7 +11,7 @@ rand = {  version = "0.8.5", default-features = false, features = ["small_rng"] 
 psp = "0.3.11"
 
 [dependencies.asset_macros]
-path = "libs/assettype_macro"
+path = "macros/assettype_macro"
 
 [dependencies.zero_derive]
-path = "libs/zero_derive"
+path = "macros/zero_derive"

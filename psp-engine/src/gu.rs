@@ -21,7 +21,7 @@ pub struct Gu {
 }
 
 impl Gu {
-    pub unsafe fn new() -> Gu {
+    pub fn new() -> Gu {
         let allocator = get_vram_allocator().unwrap();
         let fbp0 = allocator
             .alloc_texture_pixels(BUF_WIDTH, SCREEN_HEIGHT, TexturePixelFormat::Psm8888)
@@ -47,66 +47,59 @@ impl Gu {
         self.clear_color = color;
     }
 
-    pub unsafe fn init_gu(&mut self) {
-        sys::sceGuInit();
+    pub fn init_gu(&mut self) {
+        unsafe {
+            sys::sceGuInit();
 
-        // Set up buffers
-        sys::sceGuStart(
-            GuContextType::Direct,
-            addr_of_mut!(LIST) as *mut _ as *mut c_void,
-        );
-        sys::sceGuDrawBuffer(
-            DisplayPixelFormat::Psm8888,
-            self.fbp0 as _,
-            BUF_WIDTH as i32,
-        );
-        sys::sceGuDispBuffer(
-            SCREEN_WIDTH as i32,
-            SCREEN_HEIGHT as i32,
-            self.fbp1 as _,
-            BUF_WIDTH as i32,
-        );
-        sys::sceGuDepthBuffer(self.zbp as _, BUF_WIDTH as i32);
+            // Set up buffers
+            sys::sceGuStart(GuContextType::Direct, addr_of_mut!(LIST) as *mut _ as *mut c_void);
+            sys::sceGuDrawBuffer(DisplayPixelFormat::Psm8888, self.fbp0 as _, BUF_WIDTH as i32);
+            sys::sceGuDispBuffer(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32, self.fbp1 as _, BUF_WIDTH as i32);
+            sys::sceGuDepthBuffer(self.zbp as _, BUF_WIDTH as i32);
 
-        // Set up viewport
-        sys::sceGuOffset(2048 - (SCREEN_WIDTH / 2), 2048 - (SCREEN_HEIGHT / 2));
-        sys::sceGuViewport(2048, 2048, SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
-        sys::sceGuEnable(GuState::ScissorTest);
-        sys::sceGuScissor(0, 0, SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
+            // Set up viewport
+            sys::sceGuOffset(2048 - (SCREEN_WIDTH / 2), 2048 - (SCREEN_HEIGHT / 2));
+            sys::sceGuViewport(2048, 2048, SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
+            sys::sceGuEnable(GuState::ScissorTest);
+            sys::sceGuScissor(0, 0, SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
 
-        // Set up depth
-        sys::sceGuDepthRange(65535, 0); // Use full buffer for depth testing
-        sys::sceGuDepthFunc(DepthFunc::GreaterOrEqual); // Depth buffer is reversed so Greater than or equals
-        sys::sceGuEnable(GuState::DepthTest); // Enable depth testing
+            // Set up depth
+            sys::sceGuDepthRange(65535, 0); // Use full buffer for depth testing
+            sys::sceGuDepthFunc(DepthFunc::GreaterOrEqual); // Depth buffer is reversed so Greater than or equals
+            sys::sceGuEnable(GuState::DepthTest); // Enable depth testing
 
-        sys::sceGuFinish();
-        sys::sceGuDisplay(true);
+            sys::sceGuFinish();
+            sys::sceGuDisplay(true);
+        }
     }
 
     // Switch to gu context, start adding commands and clear screen
-    pub unsafe fn start_frame(&self) {
-        // Switch to GU context
-        sys::sceGuStart(
-            GuContextType::Direct,
-            addr_of_mut!(LIST) as *mut _ as *mut c_void,
-        );
-        // Clear screen
-        sys::sceGuClearColor(self.clear_color);
-        sys::sceGuClear(ClearBuffer::COLOR_BUFFER_BIT);
+    pub fn start_frame(&self, clear: bool) {
+        unsafe {
+            // Switch to GU context
+            sys::sceGuStart(GuContextType::Direct, addr_of_mut!(LIST) as *mut _ as *mut c_void);
+            // Clear screen
+            if clear {
+                sys::sceGuClearColor(self.clear_color);
+                sys::sceGuClear(ClearBuffer::COLOR_BUFFER_BIT);
+            }
+        }
     }
 
     /// Stop adding commands to display list, swap frames
-    pub unsafe fn end_frame(&self) {
-        // Finish with GU Context setup, start executing list of commands and swap to parent context
-        sys::sceGuFinish();
+    pub fn end_frame(&self) {
+        unsafe {
+            // Finish with GU Context setup, start executing list of commands and swap to parent context
+            sys::sceGuFinish();
 
-        // Stalls until display list is finished executing
-        sys::sceGuSync(sys::GuSyncMode::Finish, sys::GuSyncBehavior::Wait);
+            // Stalls until display list is finished executing
+            sys::sceGuSync(sys::GuSyncMode::Finish, sys::GuSyncBehavior::Wait);
 
-        // Wait for vertical blank start
-        sys::sceDisplayWaitVblankStart();
+            // Wait for vertical blank start
+            sys::sceDisplayWaitVblankStart();
 
-        // Swap display buffer and draw buffer
-        sys::sceGuSwapBuffers();
+            // Swap display buffer and draw buffer
+            sys::sceGuSwapBuffers();
+        }
     }
 }

@@ -1,13 +1,15 @@
 use alloc::collections::BTreeMap;
 use psp::sys::sceRtcGetCurrentTick;
 use alloc::boxed::Box;
-use crate::asset_handling::assets::{Asset, Raw};
+use core::cell::{RefCell, RefMut, Ref};
+use alloc::string::ToString;
+use crate::asset_handling::assets::Asset;
 use crate::utils::generate_random_number;
 
 pub type Uid = u32;
 
 pub struct AssetHandler {
-    pub assets: BTreeMap<Uid, Box::<dyn Asset>>
+    pub assets: BTreeMap<Uid, RefCell<Box::<dyn Asset>>>
 }
 
 impl AssetHandler {
@@ -17,46 +19,48 @@ impl AssetHandler {
         }
     }
 
-    pub unsafe fn add<T>(&mut self, filepath: &str) -> Result<Uid, &str>
+    pub fn add<T>(&mut self, filepath: &str) -> Result<Uid, &str>
     where
         T: Asset + Clone + Default + 'static,
     {
-        let mut seed: u64 = 0;
-        if sceRtcGetCurrentTick(&mut seed as *mut u64) < 0 {
-            return Err("Failed to get current time. Cannot generate random number.");
-        }
+        unsafe {
+            let mut seed: u64 = 0;
+            if sceRtcGetCurrentTick(&mut seed as *mut u64) < 0 {
+                return Err("Failed to get current time. Cannot generate random number.");
+            }
 
-        let mut asset = T::default();
-        if asset.init(filepath).is_err() {
-            return Err("Failed to init asset.");
-        }
+            let mut asset = T::default();
+            if asset.init(filepath.to_string()).is_err() {
+                return Err("Failed to init asset.");
+            }
 
-        let mut uid = generate_random_number(seed);
-        while self.assets.try_insert(uid, Box::new(asset.clone())).is_err() {
-            seed += 1;
-            uid = generate_random_number(seed);
-        }
+            let mut uid = generate_random_number(seed);
+            while self.assets.try_insert(uid, RefCell::new(Box::new(asset.clone()))).is_err() {
+                seed += 1;
+                uid = generate_random_number(seed);
+            }
 
-        Ok(uid)
+            Ok(uid)
+        }
     }
 
-    pub fn query<T>(&self, uid: Uid) -> Result<&T, &str>
+    pub fn query<T>(&self, uid: Uid) -> Result<Ref<T>, &str>
     where
         T: Asset + 'static,
     {
         match self.assets.get(&uid) {
             None => Err("Query failed to find asset."),
-            Some(x) => Ok(x.as_any().downcast_ref::<T>().unwrap())
+            Some(x) => Ok(Ref::map(x.borrow(), |x| x.as_any().downcast_ref::<T>().unwrap()))
         }
     }
 
-    pub fn query_mut<T>(&mut self, uid: Uid) -> Result<&mut T, &str>
+    pub fn query_mut<T>(&self, uid: Uid) -> Result<RefMut<T>, &str>
     where
         T: Asset + 'static,
     {
-        match self.assets.get_mut(&uid) {
+        match self.assets.get(&uid) {
             None => Err("Query failed to find asset"),
-            Some(x) => Ok(x.as_any_mut().downcast_mut::<T>().unwrap())
+            Some(x) => Ok(RefMut::map(x.borrow_mut(), |x| x.as_any_mut().downcast_mut::<T>().unwrap()))
         }
     }
 }
