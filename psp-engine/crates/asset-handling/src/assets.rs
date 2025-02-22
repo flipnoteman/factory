@@ -8,7 +8,7 @@ use asset_macros::AssetType;
 use core::fmt::Debug;
 use core::ptr::{null_mut, slice_from_raw_parts_mut};
 use psp::sys::{sceIoClose, sceIoGetstat, sceIoRead, IoOpenFlags, SceIoStat};
-use crate::utils::*;
+use misc::utils::*;
 
 pub trait Asset: Debug + AsAny {
     fn init(&mut self, filepath: String) -> Result<(), &str>;

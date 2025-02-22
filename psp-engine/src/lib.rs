@@ -5,8 +5,8 @@
 
 pub mod input;
 pub mod render;
-pub(crate) mod utils;
 pub mod gu;
-pub mod asset_handling;
 
 pub extern crate alloc;
+pub extern crate misc;
+pub extern crate asset_handling;

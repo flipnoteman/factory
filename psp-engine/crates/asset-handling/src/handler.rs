@@ -1,15 +1,13 @@
-use alloc::collections::BTreeMap;
+use super::assets::Asset;
+use misc::utils::*;
+use alloc::{collections::BTreeMap, string::ToString, boxed::Box };
+use core::cell::{Ref, RefCell, RefMut};
 use psp::sys::sceRtcGetCurrentTick;
-use alloc::boxed::Box;
-use core::cell::{RefCell, RefMut, Ref};
-use alloc::string::ToString;
-use crate::asset_handling::assets::Asset;
-use crate::utils::generate_random_number;
 
 pub type Uid = u32;
 
 pub struct AssetHandler {
-    pub assets: BTreeMap<Uid, RefCell<Box::<dyn Asset>>>
+    pub assets: BTreeMap<Uid, RefCell<Box<dyn Asset>>>,
 }
 
 impl AssetHandler {
@@ -35,7 +33,11 @@ impl AssetHandler {
             }
 
             let mut uid = generate_random_number(seed);
-            while self.assets.try_insert(uid, RefCell::new(Box::new(asset.clone()))).is_err() {
+            while self
+                .assets
+                .try_insert(uid, RefCell::new(Box::new(asset.clone())))
+                .is_err()
+            {
                 seed += 1;
                 uid = generate_random_number(seed);
             }
@@ -50,7 +52,9 @@ impl AssetHandler {
     {
         match self.assets.get(&uid) {
             None => Err("Query failed to find asset."),
-            Some(x) => Ok(Ref::map(x.borrow(), |x| x.as_any().downcast_ref::<T>().unwrap()))
+            Some(x) => Ok(Ref::map(x.borrow(), |x| {
+                x.as_any().downcast_ref::<T>().unwrap()
+            })),
         }
     }
 
@@ -60,7 +64,9 @@ impl AssetHandler {
     {
         match self.assets.get(&uid) {
             None => Err("Query failed to find asset"),
-            Some(x) => Ok(RefMut::map(x.borrow_mut(), |x| x.as_any_mut().downcast_mut::<T>().unwrap()))
+            Some(x) => Ok(RefMut::map(x.borrow_mut(), |x| {
+                x.as_any_mut().downcast_mut::<T>().unwrap()
+            })),
         }
     }
 }

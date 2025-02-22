@@ -1,0 +1,13 @@
+[package]
+name = "asset-handling"
+version = "0.1.0"
+edition = "2024"
+
+[unstable]
+build-std = ["core", "alloc"]
+
+[dependencies]
+misc = { path = "../misc" }
+asset_macros = { path = "../../macros/assettype_macro" }
+psp = "0.3.11"
+

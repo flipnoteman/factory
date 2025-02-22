@@ -9,8 +9,8 @@ use psp::{sys};
 use psp::sys::{sceGuGetMemory, GuPrimitive, VertexType};
 use zero_derive::Zero;
 
-use crate::asset_handling::assets::BMP;
-use crate::utils::{convert_ptwo, is_pow_two};
+use asset_handling::assets::BMP;
+use misc::utils::{convert_ptwo, is_pow_two};
 
 #[repr(C)]
 #[derive(Debug, Zero)]
