@@ -6,11 +6,25 @@ use core::{alloc::Layout, ptr::NonNull};
 use alloc::alloc::{alloc, dealloc};
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct AVec<T> {
     length: usize,
     capacity: usize,
     pointer: NonNull<T>,
+}
+
+pub fn realloc(pointer: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+
+    let new_layout = Layout::from_size_align(new_size, 16).expect("Couldn't allocate new memory for realloc") ;
+    let t = unsafe { alloc(new_layout) };
+    let tmp = pointer;
+
+    unsafe {
+        core::ptr::copy_nonoverlapping(tmp, t, layout.size());
+        dealloc(tmp, layout);
+    }
+
+    t 
 }
 
 impl<T> AVec<T> {
@@ -38,14 +52,10 @@ impl<T> AVec<T> {
             self.length += 1;
         } else {
             let current_size = self.capacity * size_of::<T>();
-            let new_layout = Layout::from_size_align(current_size + (size_of::<T>() * 4), 16).expect("Couldn't allocate new memory for realloc") ;
-            let t = unsafe { alloc(new_layout) } as *mut T;
-            let t = NonNull::new(t).expect("Couldn't allocate new memory");
-            let tmp = self.pointer;
-            self.pointer = t;
             unsafe { 
-                core::ptr::copy_nonoverlapping(tmp.as_ptr(), t.as_ptr(), self.length);
-                dealloc(tmp.as_ptr() as *mut u8, Layout::from_size_align(current_size, 16).expect("Couldn't deallocate memory for realloc"));
+                let old_layout = Layout::from_size_align(current_size, 16).expect("Couldn't use layout in realloc");
+                let new_size = current_size + (size_of::<T>() * 4);
+                self.pointer = NonNull::new(realloc(self.pointer.as_ptr() as *mut u8, old_layout, new_size) as *mut T).expect("Could not create NonNull from realloc");
                 self.pointer.as_ptr().add(self.length).write(value);
             };
             self.length += 1;
@@ -62,6 +72,35 @@ impl<T> AVec<T> {
     }
 }
 
+impl<T> core::ops::Deref for AVec<T> {
+    type Target = [T];
+    fn deref(&self) -> &[T] {
+        unsafe {
+            alloc::slice::from_raw_parts(self.pointer.as_ptr(), self.length)
+        }
+    }
+}
+
+impl<T> core::ops::DerefMut for AVec<T> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        unsafe {
+            alloc::slice::from_raw_parts_mut(self.pointer.as_ptr(), self.length)
+        }
+    }
+}
+
+impl<T> Drop for AVec<T> {
+    fn drop(&mut self) {
+        if self.capacity != 0 {
+            
+            let layout = Layout::from_size_align(size_of::<T>() * self.capacity, 16).expect("Couldn't create layout in Drop function");
+            unsafe {
+                dealloc(self.pointer.as_ptr() as *mut u8, layout);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,13 +109,22 @@ mod tests {
     fn capacity_test() {
         let mut t = AVec::new();
 
-        t.push(1u8); 
-        t.push(2u8);
-        t.push(3u8);
-        t.push(4u8);
-        t.push(5u8); // Should reallocate memory on 5th call
+        for i in 0..200 {
+            t.push(i);
+        }
+
+        assert_eq!(t.capacity(), 200);
+    }
+    
+    #[test]
+    fn len_test() {
+        let mut t = AVec::new();
+
+        for i in 0..200 {
+            t.push(i);
+        }
         
-        assert_eq!(t.capacity(), 8);
+        assert_eq!(t.len(), 200);
     }
 }
 
