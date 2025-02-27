@@ -47,17 +47,7 @@ impl<T> AVec<T> {
             pointer: t
         }
     }
-
-//     pub fn reserve(&mut self, additional: usize) {
-// 
-//         if self.capacity - self.length > additional { 
-//             return;
-//         }
-//         
-//         
-//         self.pointer = NonNull::new(realloc(self.pointer.as_ptr() as *mut u8, Layout::from_size_align(size_of::<T>() * self.capacity, 16).unwrap(), (self.capacity * size_of::<T>()) + (size_of::<T>() * t)) as *mut T).unwrap();
-// 
-//     }
+    
     pub fn reserve(&mut self, additional: usize) {
         if self.capacity == 0 {
             let size = additional + ((4 - additional % 4) % 4);
@@ -144,6 +134,47 @@ impl<T> AVec<T> {
         }
     }
 
+    pub fn insert(&mut self, index: usize, value: T) {
+        if self.length == self.capacity { self.reserve(1) }; 
+        assert!(index <= self.length, "index out of bounds");
+        
+        unsafe {
+            self.pointer.as_ptr().add(index + 1).copy_from(self.pointer.as_ptr().add(index), self.length - index);
+            self.pointer.as_ptr().add(index).write(value);
+            self.length += 1;
+        }
+    }
+
+    pub fn remove(&mut self, index: usize) -> T {
+        assert!(index < self.length, "index out of bounds");
+
+        unsafe {
+            let result = self.pointer.as_ptr().add(index).read();
+            self.length -= 1; 
+            self.pointer.as_ptr().add(index).copy_from(self.pointer.as_ptr().add(index + 1), self.length - index);
+            result
+        }
+    }
+
+    pub fn swap_remove(&mut self, index: usize) -> T {
+        assert!(index < self.length, "index out of bounds");
+
+        unsafe {
+            let result = self.pointer.as_ptr().add(index).read();
+            self.length -= 1; 
+            self.pointer.as_ptr().add(index).copy_from(self.pointer.as_ptr().add(self.length), 1);
+            result
+        }
+    }
+
+//     pub fn append(&mut self, other: &mut AVec<T>) {
+//         for i in 0..other.len() {
+// 
+//             self.push(*other.get(i).unwrap())
+// 
+//         }
+//     }
+    
     pub fn len(&self) -> usize {
         self.length
     }
@@ -152,6 +183,9 @@ impl<T> AVec<T> {
         self.capacity
     }
 }
+
+unsafe impl<T: Send> Send for AVec<T> {}
+unsafe impl<T: Sync> Sync for AVec<T> {}
 
 impl<T> core::ops::Deref for AVec<T> {
     type Target = [T];
@@ -179,6 +213,40 @@ impl<T> Drop for AVec<T> {
                 dealloc(self.pointer.as_ptr() as *mut u8, layout);
             }
         }
+    }
+}
+
+impl<T> PartialEq for AVec<T>
+where T: PartialEq
+{
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+
+    fn eq(&self, other: &Self) -> bool {
+        let mut r = match self.len() == other.len() {
+            true => true,
+            false => { return false }
+        };
+        
+        for i in 0..self.length {
+            if *self.get(i).unwrap() != *other.get(i).unwrap() {
+               r = false; 
+            }
+        }
+        r
+    }
+}
+
+impl<T: Copy> From<&[T]> for AVec<T> {
+    fn from(value: &[T]) -> Self {
+        let mut r: AVec<T> = AVec::new();
+        
+        for i in 0..value.len() {
+            r.push(value[i])
+        }
+
+        r
     }
 }
 
@@ -275,6 +343,59 @@ mod tests {
 
     }
 
-    
+    #[test]
+    fn insert_test() {
+        let mut t: AVec<u8> = AVec::new();
+
+        t.push(2);
+        t.insert(0, 1);
+
+        let mut r: AVec<u8> = AVec::new();
+
+        r.push(1);
+        r.insert(1, 2);
+
+        assert_eq!(t, r);
+    }
+
+    #[test]
+    fn remove_test() {
+        let mut t: AVec<u8> = AVec::new();
+        
+        t.push(1); 
+        t.push(2); 
+        t.push(3); 
+        t.push(4); 
+
+        assert_eq!(t.remove(1), 2);
+        
+        let mut r: AVec<u8> = AVec::new();
+        
+        r.push(1);
+        r.push(3);
+        r.push(4);
+        
+        assert_eq!(t, r);
+    }
+
+    #[test]
+    fn swap_remove_test() {
+        let mut t: AVec<u8> = AVec::new();
+        
+        t.push(1); 
+        t.push(2); 
+        t.push(3); 
+        t.push(4); 
+
+        assert_eq!(t.swap_remove(1), 2);
+        let mut r: AVec<u8> = AVec::new();
+        
+        r.push(1);
+        r.push(4);
+        r.push(3);
+        
+        assert_eq!(t, r);
+
+    }
 }
 
