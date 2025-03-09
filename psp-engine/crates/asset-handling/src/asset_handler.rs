@@ -5,17 +5,20 @@ use core::cell::{RefCell, RefMut, Ref};
 use alloc::string::ToString;
 use crate::assets::Asset;
 use misc::utils::generate_random_number;
+use psp_alloc::abump::ABump;
 
 pub type Uid = u32;
 
 pub struct AssetHandler {
-    pub assets: BTreeMap<Uid, RefCell<Box::<dyn Asset>>>
+    pub length: usize,
+    pub assets: RefCell<ABump>,
 }
 
 impl AssetHandler {
     pub fn new() -> AssetHandler {
         AssetHandler {
-            assets: BTreeMap::new(),
+            length: 0,
+            assets: RefCell::new(ABump::new())
         }
     }
 
@@ -23,25 +26,31 @@ impl AssetHandler {
     where
         T: Asset + Clone + Default + 'static,
     {
-        unsafe {
-            let mut seed: u64 = 0;
-            if sceRtcGetCurrentTick(&mut seed as *mut u64) < 0 {
-                return Err("Failed to get current time. Cannot generate random number.");
-            }
-
-            let mut asset = T::default();
-            if asset.init(filepath.to_string()).is_err() {
-                return Err("Failed to init asset.");
-            }
-
-            let mut uid = generate_random_number(seed);
-            while self.assets.try_insert(uid, RefCell::new(Box::new(asset.clone()))).is_err() {
-                seed += 1;
-                uid = generate_random_number(seed);
-            }
-
-            Ok(uid)
+        let mut asset = T::default();
+        if asset.init(filepath.to_string()).is_err() {
+            return Err("Failed to init asset.");
         }
+
+        Ok()
+//         unsafe {
+//             let mut seed: u64 = 0;
+//             if sceRtcGetCurrentTick(&mut seed as *mut u64) < 0 {
+//                 return Err("Failed to get current time. Cannot generate random number.");
+//             }
+// 
+//             let mut asset = T::default();
+//             if asset.init(filepath.to_string()).is_err() {
+//                 return Err("Failed to init asset.");
+//             }
+// 
+//             let mut uid = generate_random_number(seed);
+//             while self.assets.try_insert(uid, RefCell::new(Box::new(asset.clone()))).is_err() {
+//                 seed += 1;
+//                 uid = generate_random_number(seed);
+//             }
+// 
+//             Ok(uid)
+//         }
     }
 
     pub fn query<T>(&self, uid: Uid) -> Result<Ref<T>, &str>
