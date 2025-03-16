@@ -45,7 +45,7 @@ impl ABump {
         let slice = unsafe { core::slice::from_raw_parts(pointer, size) };
         self.data.extend_from_slice(slice);
         
-        let e = unsafe { Element(NonNull::new(self.data.as_ptr().add(size) as *mut _).unwrap(), size) };
+        let e = unsafe { Element(NonNull::new(self.data.as_ptr().add(self.data.len()) as *mut _).unwrap(), size) };
         
         self.meta.insert(name, e);
         

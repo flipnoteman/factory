@@ -1,19 +1,20 @@
 use alloc::alloc::{alloc, dealloc, realloc};
 use alloc::ffi::CString;
-use alloc::string::String;
-use psp::dprintln;
+use alloc::string::{String, ToString};
 use core::alloc::Layout;
+use core::cell::RefMut;
 use core::ffi::c_void;
 use asset_macros::AssetType;
 use core::fmt::Debug;
 use core::ptr::{null_mut, slice_from_raw_parts_mut};
 use psp::sys::{sceIoClose, sceIoGetstat, sceIoRead, IoOpenFlags, SceIoStat};
 use misc::utils::*;
+use psp_alloc::abump::ABump;
 
 pub trait Asset: Debug + AsAny {
     fn init(&mut self, filepath: String) -> Result<(), &str>;
 
-    fn load(&mut self) -> Result<(), &str>;
+    fn load(&mut self, uid: u32, dest: RefMut<ABump>) -> Result<(), &str>;
 }
 
 #[AssetType]
@@ -70,7 +71,7 @@ impl Asset for Raw {
         Ok(())
     }
 
-    fn load(&mut self) -> Result<(), &str> {
+    fn load(&mut self, uid: u32, mut dest: RefMut<ABump>) -> Result<(), &str> {
         unsafe {
 
             let layout = Layout::from_size_align(self.size as usize, 16).unwrap();
@@ -86,8 +87,10 @@ impl Asset for Raw {
                 dealloc(handle as *mut u8, dealloc_layout);
                 return Err("Failed to close file.");
             };
-            
-            self.handle = Some(handle);
+
+            dest.append(uid.to_string(), handle as *const u8, self.size as usize);
+            self.handle = Some(dest.get(&uid.to_string()).unwrap().0 as *mut c_void);
+            dealloc(handle as *mut u8, dealloc_layout);
         }
 
         Ok(())
@@ -117,7 +120,7 @@ impl Asset for BMP {
 
         Ok(())
     }
-    fn load(&mut self) -> Result<(), &str> {
+    fn load(&mut self, uid: u32, mut dest: RefMut<ABump>) -> Result<(), &str> {
         unsafe {
             let size = self.size as usize;
 
@@ -193,8 +196,11 @@ impl Asset for BMP {
                     }
                 }
             }
-           
+
+            let _ = dest.append(uid.to_string(), handle as *const u8, self.size as usize);
+            self.handle = Some(dest.get(&uid.to_string()).unwrap().0 as *mut c_void);
             dealloc(tmp_handle as *mut u8, Layout::array::<u8>(size).unwrap());
+            dealloc(handle, Layout::from_size_align(data_size as usize, 16).unwrap());
          
             //TODO: See if compression is possible and if it can be implemented
         }

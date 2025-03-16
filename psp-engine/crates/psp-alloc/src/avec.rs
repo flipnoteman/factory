@@ -15,7 +15,7 @@ pub fn realloc(pointer: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     let tmp = pointer;
 
     unsafe {
-        core::ptr::copy_nonoverlapping(tmp, t, layout.size());
+        core::ptr::copy(tmp, t, layout.size());
         dealloc(tmp, layout);
     }
 
@@ -86,7 +86,7 @@ impl<T> AVec<T> {
     }
 
 
-    pub fn reserve_exact(&mut self, additional: usize) {
+    pub fn reserve_exact(&mut self, additional: usize){
         if self.capacity == 0 {
             let layout = Layout::from_size_align(size_of::<T>() * additional, 16).expect("Could not allocate with layout");
             let t = unsafe { alloc(layout) } as *mut T;
